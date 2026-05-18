@@ -3,7 +3,6 @@ import os
 import socketserver
 from http import server
 from config import Config
-from curingMachine import CuringMachine
 
 logger = logging.getLogger(__name__)
 
@@ -58,31 +57,6 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
 
         elif self.path == '/index.html':
             self.sendFile('src/client/index.html')
-
-        elif self.path == '/index.js':
-            self.sendFile('src/client/index.js')
-
-        elif self.path == '/stream.mjpg':
-            self.stream()
-
-        elif self.path == '/button/startcam':
-            CuringMachine.startCam()
-            self.redirectHome()
-
-        elif self.path == '/button/stopcam':
-            CuringMachine.stopCam()
-            self.redirectHome()
-
-        elif self.path == '/button/picture':
-            self.sendStream('image/png', CuringMachine.picture())
-
-        elif self.path == '/button/startbelt':
-            CuringMachine.startBelt()
-            self.redirectHome()
-
-        elif self.path == '/button/stopbelt':
-            CuringMachine.stopBelt()
-            self.redirectHome()
 
         else:
             # An unknown request was sent
