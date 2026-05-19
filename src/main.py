@@ -3,9 +3,10 @@ print("Starting...")
 import logging
 import signal
 import sys
-from config import Config
-from server import Server
-from powerMeter import PowerMeter
+from Config import Config
+from Server import Server
+from Power_System import Power_System
+from Drone import Drone
 
 # Configure logs to log both in the console and to a file
 logger = logging.getLogger(__name__)
@@ -30,7 +31,8 @@ if __name__ == "__main__":
     logger.info("starting")
     try:
         Config.start()
-        pm = PowerMeter(1)
+        Power_System.start()
+        Drone.start()
         Server.start()
     finally:
         # CuringMachine.stop()

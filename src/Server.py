@@ -1,8 +1,11 @@
 import logging
 import os
 import socketserver
+import json
 from http import server
-from config import Config
+from Config import Config
+from Power_System import Power_System
+from Drone import Drone
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +51,7 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
     # Requests always contain a path/url that describes what the request wants from the server
 
     def do_GET(self):
+        logger.debug(f"Received GET: {self.path}")
         # read the request url and call the appropriate function
         if self.path == '/':
             self.redirectHome(permanently=True)
@@ -57,6 +61,40 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
 
         elif self.path == '/index.html':
             self.sendFile('src/client/index.html')
+
+        elif self.path == '/index.js':
+            self.sendFile('src/client/index.js')
+
+        elif self.path == '/api/button/start':
+            Power_System.enable()
+            self.redirectHome()
+
+        elif self.path == '/api/button/stop':
+            Power_System.disable()
+            self.redirectHome()
+
+        elif self.path == "/api/get/power/fuelcell":
+            self.send_power(Power_System.fc_power)
+
+        elif self.path == "/api/get/power/battery":
+            self.send_power(Power_System.battery.power_meter)
+
+        elif self.path == "/api/get/power/drone":
+            self.send_power(Drone.power_meter)
+
+        elif self.path == "/api/get/pressure":
+            self.send_value(Power_System.pressure_sensor.read_average())
+
+        elif self.path == "/api/get/battery":
+            self.send_value(Power_System.battery.get_percentage())
+
+        elif self.path == "/api/get/thrust":
+            self.send_value(Drone.get_thrust())
+    # const fc = await getData('power/fuelcell');
+    # const battery = await getData('power/battery');
+    # const drone = await getData('power/drone');
+    # const pressure = await getData('pressure');
+    # const soc = await getData('battery');
 
         else:
             # An unknown request was sent
@@ -73,6 +111,37 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
     def sendPageNotFound(self):
         self.send_error(404)
         self.end_headers()
+
+    def send_value(self, value):
+        # Convert the data to a JSON string
+        response_data = json.dumps(value)
+
+        # Set the response headers and status
+        self.send_response(server.HTTPStatus.OK)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+
+        # Write the JSON response back to the client
+        self.wfile.write(response_data.encode("utf-8"))
+
+    def send_power(self, power_meter):
+        # Get the sensor data
+        data = {
+            "power": power_meter.get_power(),
+            "voltage": power_meter.get_voltage(),
+            "current": power_meter.get_current(),
+        }
+        # Convert the data to a JSON string
+        response_data = json.dumps(data)
+
+        # Set the response headers and status
+        self.send_response(server.HTTPStatus.OK)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+
+        # Write the JSON response back to the client
+        self.wfile.write(response_data.encode("utf-8"))
+
 
     def sendFile(self, filePath):
         # This opens a file on the raspberry and sends that to the webpage

@@ -1,5 +1,5 @@
 import statistics
-from config import Config
+from Config import Config
 from lib.hx711 import HX711
 import logging
 import time
@@ -7,7 +7,7 @@ import time
 logger = logging.getLogger(__name__)
 
 
-class Loadcell():
+class Load_Cell():
 
     def _parse(value):
         lowValue = Config.getLoadcell('lowValue')
@@ -19,12 +19,12 @@ class Loadcell():
     def start():
         logger.debug('Start')
         # Loadcell.hx = HX711(5, 6)
-        Loadcell.hx = HX711(dout_pin=5, pd_sck_pin=6, gain=128, channel='A')
-        Loadcell.reset()
+        Load_Cell.hx = HX711(dout_pin=5, pd_sck_pin=6, gain=128, channel='A')
+        Load_Cell.reset()
 
     def reset():
         logger.debug("Reset")
-        result = Loadcell.hx.reset()		# Before we start, reset the hx711 ( not necessary)
+        result = Load_Cell.hx.reset()		# Before we start, reset the hx711 ( not necessary)
         if result:			# you can check if the reset was successful
             logger.info('Ready to use')
         else:
@@ -32,16 +32,16 @@ class Loadcell():
 
     def print():
         logger.debug('Print')
-        data = Loadcell.hx.get_raw_data(5)
+        data = Load_Cell.hx.get_raw_data(5)
 
         if data != False:  # always check if you get correct value or only False
             logger.info('Raw data: ' + str(data) + "\n")
         else:
             logger.warn('invalid data')
 
-    def readRaw():
+    def read_raw():
         logger.debug('Read')
-        data = Loadcell.hx.get_raw_data()
+        data = Load_Cell.hx.get_raw_data()
         logger.debug(data)
 
         if data != False and len(data) > 1:
@@ -49,19 +49,19 @@ class Loadcell():
 
         logger.warn('invalid data')
 
-    def readParsed():
-        return round(Loadcell._parse(Loadcell.readRaw()), 3)
+    def read_parsed():
+        return round(Load_Cell._parse(Load_Cell.read_raw()), 3)
 
-    def configLow():
-        lowValue = Loadcell.readRaw()
+    def config_low():
+        lowValue = Load_Cell.readRaw()
         Config.setLoadcell('lowValue', str(lowValue))
 
-    def configHigh():
-        highValue = Loadcell.readRaw()
+    def config_high():
+        highValue = Load_Cell.readRaw()
         Config.setLoadcell('highValue', str(highValue))
 
-    def getHighWeight():
+    def get_high_weight():
         return Config.getLoadcell('highWeight')
 
-    def setHighWeight(highWeight):
+    def set_high_weight(highWeight):
         Config.setLoadcell('highWeight', str(highWeight))
