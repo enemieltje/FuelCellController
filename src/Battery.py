@@ -47,9 +47,9 @@ class Battery:
 
         # Clamp range
         if voltage >= 4.20:
-            return 100
+            return 100.0
         if voltage <= 3.00:
-            return 0
+            return 0.0
 
         # Find interval for interpolation
         for i in range(len(LIPO_TABLE) - 1):

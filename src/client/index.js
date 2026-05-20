@@ -106,9 +106,9 @@ async function fetchValues() {
     updateValue('motorPower', drone.power.toFixed(1) + ' W');
     updateValue('motorVoltage', drone.voltage.toFixed(1) + ' V');
     updateValue('motorCurrent', drone.current.toFixed(1) + ' A');
+    updateValue('motorThrust', thrust.toFixed(1) + ' kg');
 
     updateValue('pressureValue', pressure.toFixed(2) + ' bar');
-    // updateValue('thrustValue', thrust.toFixed(2) + ' kg');
 
     addData(fuelCellChart, now, fc.power);
     addData(batteryChart, now, battery.power);

@@ -21,7 +21,9 @@ class Analog_Pins:
 
     def read(self, channel):
         try:
-            return self.ads.read_voltage(channel)
+            voltage = self.ads.read_voltage(channel)
+            logger.debug(voltage)
+            return voltage["r"]
         except:
             logger.warn("Could not find Analog Pins")
             return 0

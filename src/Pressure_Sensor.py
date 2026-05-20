@@ -7,8 +7,8 @@ class Pressure_Sensor:
 
     def read_pressure(self):
         voltage = self.analog_pins.read(self.channel)
-        current = voltage / 120
-        pressure = ((current - 0.004) / (0.02 - 0.004)) * 10
+        current = voltage / 120.0
+        pressure = ((current - 0.004) / (0.02 - 0.004)) * 10.0
         return pressure
 
 
