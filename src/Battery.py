@@ -30,7 +30,7 @@ class Battery:
     def __init__(self, analog_pins, channel=1):
         self.analog_pins = analog_pins
         self.channel = channel
-        self.power_meter = Power_Meter(0x42)
+        self.power_meter = Power_Meter(0x41)
 
 
     def read_voltage(self):

@@ -6,6 +6,7 @@ from http import server
 from Config import Config
 from Power_System import Power_System
 from Drone import Drone
+from Database import Database
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,23 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
             Power_System.disable()
             self.redirectHome()
 
+        elif self.path == '/api/button/startDrone':
+            Drone.set_throttle(1.0)
+            self.redirectHome()
+
+        elif self.path == '/api/button/stopDrone':
+            Drone.set_throttle(0.0)
+            self.redirectHome()
+
+        elif self.path == '/api/button/calibrateDrone':
+            # Drone.arm()
+            Drone.power.on()
+            self.redirectHome()
+
+        elif self.path == '/api/button/disableDrone':
+            Drone.power.off()
+            self.redirectHome()
+
         elif self.path == "/api/get/power/fuelcell":
             self.send_power(Power_System.fc_power)
 
@@ -83,22 +101,68 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
             self.send_power(Drone.power_meter)
 
         elif self.path == "/api/get/pressure":
-            self.send_value(Power_System.pressure_sensor.read_average())
+            # self.send_value(Power_System.pressure_sensor.read_average())
+            self.send_value(Database.get_latest(Database.PRESSURE))
 
         elif self.path == "/api/get/battery":
-            self.send_value(Power_System.battery.get_percentage())
+            # self.send_value(Power_System.battery.get_percentage())
+            self.send_value(Database.get_latest(Database.BATTERY_SOC))
 
         elif self.path == "/api/get/thrust":
-            self.send_value(Drone.get_thrust())
-    # const fc = await getData('power/fuelcell');
-    # const battery = await getData('power/battery');
-    # const drone = await getData('power/drone');
-    # const pressure = await getData('pressure');
-    # const soc = await getData('battery');
+            # self.send_value(Drone.get_thrust())
+            self.send_value(Database.get_latest(Database.THRUST))
 
         else:
             # An unknown request was sent
             server.SimpleHTTPRequestHandler.do_GET(self)
+
+    def do_POST(self):
+        logger.debug(f"Received POST: {self.path}")
+
+        # Get content length from headers
+        content_length = int(self.headers.get('Content-Length', 0))
+
+        # Read raw body bytes
+        body = self.rfile.read(content_length)
+
+        try:
+            # Decode JSON body
+            data = json.loads(body.decode("utf-8"))
+
+            logger.debug(f"POST data: {data}")
+
+            # Example endpoint
+            if self.path == "/api/set/throttle":
+
+                # Expect JSON like:
+                # { "throttle": 0.75 }
+
+                throttle = data.get("throttle")
+
+                if throttle is None:
+                    self.send_error(400, "Missing throttle value")
+                    return
+
+                Drone.set_throttle(float(throttle))
+
+                # Send success response
+                response = {
+                    "status": "ok",
+                    "throttle": throttle
+                }
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+
+                self.wfile.write(json.dumps(response).encode("utf-8"))
+                return
+
+            else:
+                self.send_error(404, "Unknown POST endpoint")
+
+        except json.JSONDecodeError:
+            self.send_error(400, "Invalid JSON")
 
     def redirectHome(self, permanently=False):
         if permanently:
