@@ -21,10 +21,10 @@ class Power_System:
 
         Power_System.fuel_cell = gpiozero.OutputDevice(13, active_high=False)
         Power_System.relay = gpiozero.OutputDevice(27, active_high=False)
-        Power_System.save_measurement()
+        # Power_System.save_measurement()
         # Database.get_run()
-        Database.get_csv()
-        logger.debug(f"Battery SOC: {Database.get_latest(SENSOR_ID.BATTERY_SOC)}")
+        # Database.get_csv()
+        # logger.debug(f"Battery SOC: {Database.get_latest(SENSOR_ID.BATTERY_SOC)}")
 
     def stop():
         Power_System.battery.stop()
@@ -41,23 +41,6 @@ class Power_System:
 
     def save_measurement():
         logger.debug("Saving Sensor Data to Database")
-        # fc = Power_System.fc_power
-        # battery = Power_System.battery.power_meter
-        # drone = Drone.power_meter
-        # Database.insert(
-        #     fc.get_power(),
-        #     fc.get_voltage(),
-        #     fc.get_current(),
-        #     battery.get_power(),
-        #     battery.get_voltage(),
-        #     battery.get_current(),
-        #     drone.get_power(),
-        #     drone.get_voltage(),
-        #     drone.get_current(),
-        #     Power_System.battery.get_percentage(),
-        #     Power_System.pressure_sensor.read_average(),
-        #     Load_Cell.read_parsed(),
-        # )
         Database.insert(SENSOR_ID.BATTERY_SOC, Power_System.battery.get_percentage())
         Database.insert(SENSOR_ID.PRESSURE, Power_System.pressure_sensor.read_pressure())
-        Database.insert(SENSOR_ID.THRUST, Load_Cell.read_parsed())
+        # Database.insert(SENSOR_ID.THRUST, Load_Cell.read_parsed())

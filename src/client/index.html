@@ -137,6 +137,66 @@
             line-height: 1.4;
         }
 
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        label {
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #cfd7e3;
+            border-radius: 8px;
+            font: inherit;
+        }
+
+        textarea {
+            min-height: 90px;
+            resize: vertical;
+        }
+
+        .run-status {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .run-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .run-table th,
+        .run-table td {
+            padding: 0.6rem;
+            border-bottom: 1px solid #e1e6ee;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .run-table button {
+            min-width: 0;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+        }
+
         canvas {
             width: 100% !important;
             height: 250px !important;
@@ -182,6 +242,35 @@
             </div>
         </div>
 
+        <!-- Test Run Controls -->
+        <div class="card">
+            <h2>Test Run</h2>
+
+            <div class="run-status">
+                <div><strong>Current run:</strong> <span id="currentRunId">None</span></div>
+                <div><strong>Status:</strong> <span id="currentRunStatus">Stopped</span></div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-row">
+                    <label for="runName">Name</label>
+                    <input id="runName" type="text">
+                </div>
+
+                <div class="form-row">
+                    <label for="runNotes">Notes</label>
+                    <textarea id="runNotes"></textarea>
+                </div>
+
+                <div class="controls">
+                    <button id="newRunButton">New Run</button>
+                    <button id="saveRunButton">Save</button>
+                    <button id="stopRunButton">Stop Run</button>
+                    <button id="downloadCurrentRunButton">Download CSV</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Current Sensor Values -->
         <div class="card">
             <h2>Current System Status</h2>
@@ -200,6 +289,29 @@
                 <strong>System State:</strong>
                 <span id="systemState">Idle</span>
             </div>
+        </div>
+
+        <!-- Previous Test Runs -->
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2>Previous Test Runs</h2>
+            <table class="run-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Started</th>
+                        <th>Ended</th>
+                        <th>Samples</th>
+                        <th>Notes</th>
+                        <th>CSV</th>
+                    </tr>
+                </thead>
+                <tbody id="runsTableBody">
+                    <tr>
+                        <td colspan="7">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         <!-- Power Flow Overview -->

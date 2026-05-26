@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class Drone:
     def start():
-        Load_Cell.start()
+        # Load_Cell.start()
         Drone.power_meter = Power_Meter(SENSOR_ID.LOAD_POWER, 0x43)
         Drone.power = gpiozero.OutputDevice(pin=17, active_high=False)
         Drone.throttle = gpiozero.Servo(
@@ -26,7 +26,7 @@ class Drone:
         Drone.throttle_sensor.get_value = get_value
 
     def stop():
-        Load_Cell.stop()
+        # Load_Cell.stop()
         Drone.power_meter.stop()
         Drone.throttle_sensor.stop()
         Drone.set_throttle(0.0)

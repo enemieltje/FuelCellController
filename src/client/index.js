@@ -75,6 +75,41 @@ function addData(chart, label, value) {
     chart.update();
 }
 
+function formatDate(value) {
+    if (!value)
+    {
+        return '';
+    }
+
+    return new Date(value).toLocaleString();
+}
+
+function downloadRun(runId) {
+    if (!runId)
+    {
+        return;
+    }
+
+    window.location.href = `/api/runs/${runId}/csv`;
+}
+
+async function postJson(url, data = {}) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    });
+
+    if (!response.ok)
+    {
+        throw new Error(`Request failed: ${response.status}`);
+    }
+
+    return response.json();
+}
+
 
 // =============================
 // Example Demo Data
@@ -144,6 +179,127 @@ function getData(varName) {
     })
 }
 
+// =============================
+// Test Run Controls
+// =============================
+
+let activeRun = null;
+
+async function fetchCurrentRun() {
+    const response = await fetch('/api/runs/current');
+
+    if (!response.ok)
+    {
+        throw new Error(`Failed to fetch current run: ${response.status}`);
+    }
+
+    return response.json();
+}
+
+async function fetchRuns() {
+    const response = await fetch('/api/runs');
+
+    if (!response.ok)
+    {
+        throw new Error(`Failed to fetch runs: ${response.status}`);
+    }
+
+    return response.json();
+}
+
+function renderCurrentRun(run) {
+    activeRun = run;
+
+    const runId = document.getElementById('currentRunId');
+    const runStatus = document.getElementById('currentRunStatus');
+    const runName = document.getElementById('runName');
+    const runNotes = document.getElementById('runNotes');
+    const stopRunButton = document.getElementById('stopRunButton');
+    const saveRunButton = document.getElementById('saveRunButton');
+    const downloadCurrentRunButton = document.getElementById('downloadCurrentRunButton');
+
+    if (!run)
+    {
+        runId.innerText = 'None';
+        runStatus.innerText = 'Stopped';
+        runName.value = '';
+        runNotes.value = '';
+        stopRunButton.disabled = true;
+        saveRunButton.disabled = true;
+        downloadCurrentRunButton.disabled = true;
+        return;
+    }
+
+    runId.innerText = run.id;
+    runStatus.innerText = run.ended_at ? 'Stopped' : 'Active';
+    runName.value = run.name || '';
+    runNotes.value = run.notes || '';
+    stopRunButton.disabled = Boolean(run.ended_at);
+    saveRunButton.disabled = false;
+    downloadCurrentRunButton.disabled = false;
+}
+
+function renderRuns(runs) {
+    const tbody = document.getElementById('runsTableBody');
+    tbody.innerHTML = '';
+
+    if (!runs.length)
+    {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 7;
+        cell.innerText = 'No runs found';
+        row.appendChild(cell);
+        tbody.appendChild(row);
+        return;
+    }
+
+    runs.forEach((run) => {
+        const row = document.createElement('tr');
+        const values = [
+            run.id,
+            run.name || '',
+            formatDate(run.started_at),
+            run.ended_at ? formatDate(run.ended_at) : 'Active',
+            run.sample_count,
+            run.notes || ''
+        ];
+
+        values.forEach((value) => {
+            const cell = document.createElement('td');
+            cell.innerText = value;
+            row.appendChild(cell);
+        });
+
+        const actionCell = document.createElement('td');
+        const downloadButton = document.createElement('button');
+        downloadButton.type = 'button';
+        downloadButton.innerText = 'Download';
+        downloadButton.addEventListener('click', () => downloadRun(run.id));
+        actionCell.appendChild(downloadButton);
+        row.appendChild(actionCell);
+
+        tbody.appendChild(row);
+    });
+}
+
+async function refreshRuns() {
+    console.log('Refresh Runs');
+    try
+    {
+        const [currentRun, runs] = await Promise.all([
+            fetchCurrentRun(),
+            fetchRuns()
+        ]);
+
+        renderCurrentRun(currentRun);
+        renderRuns(runs);
+    } catch (err)
+    {
+        console.error('Failed to refresh runs:', err);
+    }
+}
+
 
 // =============================
 // Button Hooks
@@ -186,6 +342,61 @@ document.getElementById('calibrateDrone').addEventListener('click', () => {
     fetch('/api/button/calibrateDrone')
 });
 
+document.getElementById('newRunButton').addEventListener('click', async () => {
+    console.log('New Run');
+    try
+    {
+        await postJson('/api/runs/start', {
+            name: document.getElementById('runName').value,
+            notes: document.getElementById('runNotes').value
+        });
+        await refreshRuns();
+    } catch (err)
+    {
+        console.error('Failed to start run:', err);
+    }
+});
+
+document.getElementById('saveRunButton').addEventListener('click', async () => {
+    console.log('Save Run');
+    if (!activeRun)
+    {
+        return;
+    }
+
+    try
+    {
+        await postJson('/api/runs/current', {
+            name: document.getElementById('runName').value,
+            notes: document.getElementById('runNotes').value
+        });
+        await refreshRuns();
+    } catch (err)
+    {
+        console.error('Failed to save run:', err);
+    }
+});
+
+document.getElementById('stopRunButton').addEventListener('click', async () => {
+    console.log('Stop Run');
+    try
+    {
+        await postJson('/api/runs/stop');
+        await refreshRuns();
+    } catch (err)
+    {
+        console.error('Failed to stop run:', err);
+    }
+});
+
+document.getElementById('downloadCurrentRunButton').addEventListener('click', () => {
+    console.log('Download Run');
+    if (activeRun)
+    {
+        downloadRun(activeRun.id);
+    }
+});
+
 const throttleSlider = document.getElementById('throttleSlider');
 const throttleValue = document.getElementById('throttleValue');
 
@@ -216,3 +427,5 @@ throttleSlider.addEventListener('input', async () => {
     }
 
 });
+
+refreshRuns();

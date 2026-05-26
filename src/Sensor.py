@@ -33,7 +33,7 @@ class Sensor:
             time.sleep(self.interval/1000)
 
     def get_value(self):
-        logger.warn(f"Sensor {self.sensor_id} get_value not implemented")
+        # logger.warn(f"Sensor {self.sensor_id} get_value not implemented")
         return 0
 
     def save_data(self):
