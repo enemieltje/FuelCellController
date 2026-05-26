@@ -21,6 +21,7 @@ class Database:
     BATTERY_SOC = 10
     PRESSURE = 11
     THRUST = 12
+    THROTTLE = 13
 
     def start():
         Database.queue = Queue()
@@ -30,6 +31,10 @@ class Database:
         Database.thread.start()
 
     def stop():
+        Database.running = False
+        Database.queue.put({
+            "action": "stop",
+        })
         Database.thread.join()
 
     def worker():
@@ -64,7 +69,16 @@ class Database:
                 result = Database.cursor.fetchone()
 
                 if request.get("response_queue"):
-                    request["response_queue"].put(result)
+                    request["response_queue"].put(result[4])
+
+
+            # -------------------------
+            # STOP
+            # -------------------------
+            elif action == "stop":
+                Database.stop_db()
+
+
 
 
     def start_db(filename="data/sensors.db"):
@@ -87,6 +101,7 @@ class Database:
         return Path(f"src/sql/{name}.sql").read_text()
 
     def insert(sensor_id, value, run_id=0):
+        # logger.debug(f"Inserting sensor {sensor_id}")
         Database.queue.put({
             "action": "insert",
             "run_id": run_id,
@@ -95,6 +110,7 @@ class Database:
         })
 
     def get_latest(sensor_id):
+        logger.debug(f"Getting latest sensor {sensor_id}")
         response_queue = Queue()
 
         Database.queue.put({

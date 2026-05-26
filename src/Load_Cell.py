@@ -1,5 +1,7 @@
 import statistics
 from Config import Config
+from Sensor import Sensor
+from Database import Database
 from lib.hx711 import HX711
 import logging
 import time
@@ -7,7 +9,8 @@ import time
 logger = logging.getLogger(__name__)
 
 
-class Load_Cell():
+class Load_Cell:
+
 
     def _parse(value):
         lowValue = Config.getLoadcell('lowValue')
@@ -18,9 +21,14 @@ class Load_Cell():
 
     def start():
         logger.debug('Start')
-        # Loadcell.hx = HX711(5, 6)
         Load_Cell.hx = HX711(dout_pin=5, pd_sck_pin=6, gain=128, channel='A')
         Load_Cell.reset()
+
+        Load_Cell.sensor = Sensor(Database.THRUST)
+        Load_Cell.sensor.get_value = Load_Cell.read_parsed
+
+    def stop():
+        Load_Cell.sensor.stop()
 
     def reset():
         logger.debug("Reset")

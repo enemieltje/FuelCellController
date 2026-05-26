@@ -166,9 +166,9 @@ document.getElementById('stopButton').addEventListener('click', () => {
     interval = 0
 });
 
-document.getElementById('calibrateDrone').addEventListener('click', () => {
-    console.log('Calibrate Drone');
-    fetch('/api/button/calibrateDrone')
+document.getElementById('enableDrone').addEventListener('click', () => {
+    console.log('Enable Drone');
+    fetch('/api/button/enableDrone')
 });
 
 document.getElementById('disableDrone').addEventListener('click', () => {
@@ -176,15 +176,14 @@ document.getElementById('disableDrone').addEventListener('click', () => {
     fetch('/api/button/disableDrone')
 });
 
-
-document.getElementById('startDrone').addEventListener('click', () => {
-    console.log('Start Drone');
-    fetch('/api/button/startDrone')
+document.getElementById('armDrone').addEventListener('click', () => {
+    console.log('Arm Drone');
+    fetch('/api/button/armDrone')
 });
 
-document.getElementById('stopDrone').addEventListener('click', () => {
-    console.log('Stop Drone');
-    fetch('/api/button/stopDrone')
+document.getElementById('calibrateDrone').addEventListener('click', () => {
+    console.log('Calibrate Drone');
+    fetch('/api/button/calibrateDrone')
 });
 
 const throttleSlider = document.getElementById('throttleSlider');
@@ -198,7 +197,8 @@ throttleSlider.addEventListener('input', async () => {
     throttleValue.innerText = value.toFixed(2);
 
     // Send to backend
-    try {
+    try
+    {
 
         await fetch('/api/set/throttle', {
             method: 'POST',
@@ -210,7 +210,8 @@ throttleSlider.addEventListener('input', async () => {
             })
         });
 
-    } catch (err) {
+    } catch (err)
+    {
         console.error('Failed to send throttle value:', err);
     }
 

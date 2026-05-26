@@ -52,7 +52,7 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
     # Requests always contain a path/url that describes what the request wants from the server
 
     def do_GET(self):
-        logger.debug(f"Received GET: {self.path}")
+        # logger.debug(f"Received GET: {self.path}")
         # read the request url and call the appropriate function
         if self.path == '/':
             self.redirectHome(permanently=True)
@@ -74,16 +74,7 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
             Power_System.disable()
             self.redirectHome()
 
-        elif self.path == '/api/button/startDrone':
-            Drone.set_throttle(1.0)
-            self.redirectHome()
-
-        elif self.path == '/api/button/stopDrone':
-            Drone.set_throttle(0.0)
-            self.redirectHome()
-
-        elif self.path == '/api/button/calibrateDrone':
-            # Drone.arm()
+        elif self.path == '/api/button/enableDrone':
             Drone.power.on()
             self.redirectHome()
 
@@ -91,33 +82,38 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
             Drone.power.off()
             self.redirectHome()
 
+        elif self.path == '/api/button/armDrone':
+            Drone.arm()
+            self.redirectHome()
+
+        elif self.path == '/api/button/calibrateDrone':
+            Drone.calibrate()
+            self.redirectHome()
+
         elif self.path == "/api/get/power/fuelcell":
-            self.send_power(Power_System.fc_power)
+            self.send_power(Database.FUELCELL_POWER)
 
         elif self.path == "/api/get/power/battery":
-            self.send_power(Power_System.battery.power_meter)
+            self.send_power(Database.BATTERY_POWER)
 
         elif self.path == "/api/get/power/drone":
-            self.send_power(Drone.power_meter)
+            self.send_power(Database.LOAD_POWER)
 
         elif self.path == "/api/get/pressure":
-            # self.send_value(Power_System.pressure_sensor.read_average())
-            self.send_value(Database.get_latest(Database.PRESSURE))
+            self.send_value(Database.PRESSURE)
 
         elif self.path == "/api/get/battery":
-            # self.send_value(Power_System.battery.get_percentage())
-            self.send_value(Database.get_latest(Database.BATTERY_SOC))
+            self.send_value(Database.BATTERY_SOC)
 
         elif self.path == "/api/get/thrust":
-            # self.send_value(Drone.get_thrust())
-            self.send_value(Database.get_latest(Database.THRUST))
+            self.send_value(Database.THRUST)
 
         else:
             # An unknown request was sent
             server.SimpleHTTPRequestHandler.do_GET(self)
 
     def do_POST(self):
-        logger.debug(f"Received POST: {self.path}")
+        # logger.debug(f"Received POST: {self.path}")
 
         # Get content length from headers
         content_length = int(self.headers.get('Content-Length', 0))
@@ -176,9 +172,9 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
         self.send_error(404)
         self.end_headers()
 
-    def send_value(self, value):
+    def send_value(self, sensor_id):
         # Convert the data to a JSON string
-        response_data = json.dumps(value)
+        response_data = json.dumps(Database.get_latest(sensor_id))
 
         # Set the response headers and status
         self.send_response(server.HTTPStatus.OK)
@@ -188,12 +184,17 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
         # Write the JSON response back to the client
         self.wfile.write(response_data.encode("utf-8"))
 
-    def send_power(self, power_meter):
+    def send_power(self, sensor_id):
         # Get the sensor data
+        # data = {
+        #     "power": power_meter.get_power(),
+        #     "voltage": power_meter.get_voltage(),
+        #     "current": power_meter.get_current(),
+        # }
         data = {
-            "power": power_meter.get_power(),
-            "voltage": power_meter.get_voltage(),
-            "current": power_meter.get_current(),
+            "power": Database.get_latest(sensor_id),
+            "voltage": Database.get_latest(sensor_id + 1),
+            "current": Database.get_latest(sensor_id + 2),
         }
         # Convert the data to a JSON string
         response_data = json.dumps(data)
@@ -220,3 +221,9 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
         # This wrapper allows us to have the request path and the file path not be the same, and handle non-existent files correctly as above
         self.path = filePath
         server.SimpleHTTPRequestHandler.do_GET(self)
+
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()

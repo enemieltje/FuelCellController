@@ -1,4 +1,10 @@
 from Power_Meter import Power_Meter
+from Database import Database
+from Sensor import Sensor
+import logging
+
+logger = logging.getLogger(__name__)
+
 LOW_VOLTAGE = 3.6
 HIGH_VOLTAGE = 4.2
 # Non-linear
@@ -30,8 +36,16 @@ class Battery:
     def __init__(self, analog_pins, channel=1):
         self.analog_pins = analog_pins
         self.channel = channel
-        self.power_meter = Power_Meter(0x41)
+        self.power_meter = Power_Meter(Database.BATTERY_POWER, 0x41)
+        self.soc_sensor = Sensor(Database.BATTERY_SOC)
 
+        def get_value():
+            return self.get_percentage()
+        self.soc_sensor.get_value = get_value
+
+    def stop(self):
+        self.power_meter.stop()
+        self.soc_sensor.stop()
 
     def read_voltage(self):
         voltage = self.analog_pins.read(self.channel)
@@ -43,7 +57,7 @@ class Battery:
 
 
     def get_percentage(self):
-        voltage = self.read_average()
+        voltage = self.read_voltage()
 
         # Clamp range
         if voltage >= 4.20:
@@ -60,8 +74,11 @@ class Battery:
                 # Linear interpolation
                 ratio = (voltage - v2) / (v1 - v2)
                 soc = soc2 + ratio * (soc1 - soc2)
-                return round(soc, 1)
+                soc = round(soc, 1)
+                logger.debug(f"Battery at {soc}% ({voltage} V)")
+                return soc
 
+        logger.debug(f"Battery disconnected")
         return None
 
     def get_power():
