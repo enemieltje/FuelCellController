@@ -5,10 +5,10 @@ import threading
 from datetime import datetime
 from queue import Queue
 from pathlib import Path
+from enum import IntEnum
 
 logger = logging.getLogger(__name__)
-
-class Database:
+class SENSOR_ID(IntEnum):
     FUELCELL_POWER = 1
     FUELCELL_VOLTAGE = 2
     FUELCELL_CURRENT = 3
@@ -22,6 +22,8 @@ class Database:
     PRESSURE = 11
     THRUST = 12
     THROTTLE = 13
+
+class Database:
 
     def start():
         Database.queue = Queue()
@@ -37,48 +39,28 @@ class Database:
         })
         Database.thread.join()
 
+
     def worker():
         Database.start_db()
+
+        Database.current_run = 1
 
         while Database.running:
             request = Database.queue.get()
 
             action = request["action"]
 
-            # -------------------------
-            # INSERT
-            # -------------------------
             if action == "insert":
-                sql = Database.load_sql("insert_sample")
+                Database._insert(request)
 
-                Database.cursor.execute(sql, (
-                    request["run_id"],
-                    datetime.now().isoformat(),
-                    request["sensor_id"],
-                    request["value"]
-                ))
-                Database.conn.commit()
-
-            # -------------------------
-            # GET LATEST
-            # -------------------------
             elif action == "get_latest":
-                sql = Database.load_sql("get_latest")
+                Database._get_latest(request)
 
-                Database.cursor.execute(sql, (request["sensor_id"],))
-                result = Database.cursor.fetchone()
+            elif action == "get_csv":
+                Database._get_csv(request)
 
-                if request.get("response_queue"):
-                    request["response_queue"].put(result[4])
-
-
-            # -------------------------
-            # STOP
-            # -------------------------
             elif action == "stop":
                 Database.stop_db()
-
-
 
 
     def start_db(filename="data/sensors.db"):
@@ -93,6 +75,7 @@ class Database:
 
         Database.conn.commit()
 
+
     def stop_db():
         Database.conn.close()
 
@@ -100,14 +83,28 @@ class Database:
     def load_sql(name):
         return Path(f"src/sql/{name}.sql").read_text()
 
-    def insert(sensor_id, value, run_id=0):
+
+    def insert(sensor_id, value):
         # logger.debug(f"Inserting sensor {sensor_id}")
         Database.queue.put({
             "action": "insert",
-            "run_id": run_id,
+            "run_id": Database.current_run,
             "sensor_id": sensor_id,
             "value": value,
         })
+
+
+    def _insert(request):
+        sql = Database.load_sql("insert_sample")
+
+        Database.cursor.execute(sql, (
+            request["run_id"],
+            datetime.now().isoformat(),
+            request["sensor_id"],
+            request["value"]
+        ))
+        Database.conn.commit()
+
 
     def get_latest(sensor_id):
         logger.debug(f"Getting latest sensor {sensor_id}")
@@ -121,39 +118,33 @@ class Database:
 
         return response_queue.get()  # blocks until result arrives
 
-    # def insert(sensor_id, value, run_id=0):
-    #     sql = Database.load_sql("insert_sample")
 
-    #     Database.cursor.execute(
-    #         sql, (
-    #             run_id,
-    #             datetime.now().isoformat(),
-    #             sensor_id,
-    #             value
-    #             )
-    #         )
-    #     Database.conn.commit()
+    def _get_latest(request):
+        sql = Database.load_sql("get_latest")
 
-    # def get_run(run_id=0):
-    #     sql = Database.load_sql("get_run_samples")
-    #     Database.cursor.execute(sql, (run_id,))
-    #     rows = Database.cursor.fetchall()
+        Database.cursor.execute(sql, (request["sensor_id"],))
+        result = Database.cursor.fetchone()
 
-    #     for row in rows:
-    #         logger.debug(row)
+        if request.get("response_queue"):
+            request["response_queue"].put(result[4])
 
-    #     return rows
 
-    # def get_csv(run_id=0):
-    #     sql = Database.load_sql("get_run_samples")
-    #     df = pd.read_sql_query(sql, Database.conn, params=(run_id,))
-    #     df.pivot(index="timestamp", columns="sensor_id", values="value")
-    #     df.to_csv("data/run.csv", index=False)
+    def get_csv():
+        logger.debug(f"Requesting csv ({Database.current_run})")
+        Database.queue.put({
+            "action": "get_csv",
+            "run_id": Database.current_run,
+        })
 
-    # def get_latest(sensor_id):
-    #     sql = Database.load_sql("get_latest")
-    #     Database.cursor.execute(sql, sensor_id)
-    #     sample = Database.cursor.fetchOne()
-    #     logger.debug(sample)
-    #     return sample
+    def _get_csv(request):
+        logger.debug(f"Getting csv ({request["run_id"]})")
+        sql = Database.load_sql("get_run_samples")
+
+        df = pd.read_sql_query(sql, Database.conn, params=(request["run_id"],))
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        pivot_df = df.pivot(index="timestamp", columns="sensor_id", values="value")
+        pivot_df = pivot_df.rename(columns={sensor.value: sensor.name for sensor in SENSOR_ID})
+
+        pivot_df.to_csv("data/run.csv", index=True)
+
 

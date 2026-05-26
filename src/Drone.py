@@ -1,6 +1,6 @@
 from Load_Cell import Load_Cell
 from Power_Meter import Power_Meter
-from Database import Database
+from Database import SENSOR_ID
 from Sensor import Sensor
 import gpiozero
 import time
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class Drone:
     def start():
         Load_Cell.start()
-        Drone.power_meter = Power_Meter(Database.LOAD_POWER, 0x43)
+        Drone.power_meter = Power_Meter(SENSOR_ID.LOAD_POWER, 0x43)
         Drone.power = gpiozero.OutputDevice(pin=17, active_high=False)
         Drone.throttle = gpiozero.Servo(
             pin=19,
@@ -22,7 +22,7 @@ class Drone:
 
         def get_value():
             return Drone.throttle.value
-        Drone.throttle_sensor = Sensor(Database.THROTTLE)
+        Drone.throttle_sensor = Sensor(SENSOR_ID.THROTTLE)
         Drone.throttle_sensor.get_value = get_value
 
     def stop():

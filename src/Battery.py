@@ -1,5 +1,5 @@
 from Power_Meter import Power_Meter
-from Database import Database
+from Database import SENSOR_ID
 from Sensor import Sensor
 import logging
 
@@ -36,8 +36,8 @@ class Battery:
     def __init__(self, analog_pins, channel=1):
         self.analog_pins = analog_pins
         self.channel = channel
-        self.power_meter = Power_Meter(Database.BATTERY_POWER, 0x41)
-        self.soc_sensor = Sensor(Database.BATTERY_SOC)
+        self.power_meter = Power_Meter(SENSOR_ID.BATTERY_POWER, 0x41)
+        self.soc_sensor = Sensor(SENSOR_ID.BATTERY_SOC)
 
         def get_value():
             return self.get_percentage()

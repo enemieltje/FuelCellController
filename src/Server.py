@@ -6,7 +6,7 @@ from http import server
 from Config import Config
 from Power_System import Power_System
 from Drone import Drone
-from Database import Database
+from Database import Database, SENSOR_ID
 
 logger = logging.getLogger(__name__)
 
@@ -91,22 +91,22 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
             self.redirectHome()
 
         elif self.path == "/api/get/power/fuelcell":
-            self.send_power(Database.FUELCELL_POWER)
+            self.send_power(SENSOR_ID.FUELCELL_POWER)
 
         elif self.path == "/api/get/power/battery":
-            self.send_power(Database.BATTERY_POWER)
+            self.send_power(SENSOR_ID.BATTERY_POWER)
 
         elif self.path == "/api/get/power/drone":
-            self.send_power(Database.LOAD_POWER)
+            self.send_power(SENSOR_ID.LOAD_POWER)
 
         elif self.path == "/api/get/pressure":
-            self.send_value(Database.PRESSURE)
+            self.send_value(SENSOR_ID.PRESSURE)
 
         elif self.path == "/api/get/battery":
-            self.send_value(Database.BATTERY_SOC)
+            self.send_value(SENSOR_ID.BATTERY_SOC)
 
         elif self.path == "/api/get/thrust":
-            self.send_value(Database.THRUST)
+            self.send_value(SENSOR_ID.THRUST)
 
         else:
             # An unknown request was sent
@@ -186,11 +186,6 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
 
     def send_power(self, sensor_id):
         # Get the sensor data
-        # data = {
-        #     "power": power_meter.get_power(),
-        #     "voltage": power_meter.get_voltage(),
-        #     "current": power_meter.get_current(),
-        # }
         data = {
             "power": Database.get_latest(sensor_id),
             "voltage": Database.get_latest(sensor_id + 1),
@@ -223,6 +218,7 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
         server.SimpleHTTPRequestHandler.do_GET(self)
 
     def end_headers(self):
+        # Prevent browsers from cacheing old versions
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         self.send_header("Pragma", "no-cache")
         self.send_header("Expires", "0")

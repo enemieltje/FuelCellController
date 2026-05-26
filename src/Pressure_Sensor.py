@@ -1,5 +1,5 @@
 import logging
-from Database import Database
+from Database import SENSOR_ID
 from Sensor import Sensor
 
 logger = logging.getLogger(__name__)
@@ -9,7 +9,7 @@ class Pressure_Sensor(Sensor):
     def __init__(self, analog_pins, channel=0):
         self.analog_pins = analog_pins
         self.channel = channel
-        super().__init__(Database.PRESSURE)
+        super().__init__(SENSOR_ID.PRESSURE)
 
     def get_value(self):
         return self.read_pressure()

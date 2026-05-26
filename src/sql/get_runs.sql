@@ -1,2 +1,3 @@
-SELECT * test_runs
-FROM sensor_samples
+SELECT *
+FROM test_runs
+ORDER BY id
