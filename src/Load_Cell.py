@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 class Load_Cell:
 
-
     def _parse(value):
         lowValue = Config.getLoadcell('lowValue')
         lowWeight = Config.getLoadcell('lowWeight')

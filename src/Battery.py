@@ -32,6 +32,7 @@ LIPO_TABLE = [
     (3.00, 0),
 ]
 
+
 class Battery:
     def __init__(self, analog_pins, channel=1):
         self.analog_pins = analog_pins
@@ -51,10 +52,8 @@ class Battery:
         voltage = self.analog_pins.read(self.channel)
         return voltage
 
-
     def read_average(self, samples=10):
         return sum(self.read_voltage() for _ in range(samples)) / samples
-
 
     def get_percentage(self):
         voltage = self.read_voltage()
@@ -82,4 +81,4 @@ class Battery:
         return None
 
     def get_power():
-        self.power_meter.get_power()
+        Battery.power_meter.get_power()

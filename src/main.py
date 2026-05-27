@@ -1,13 +1,13 @@
+from Database import Database
+from Drone import Drone
+from Power_System import Power_System
+from Server import Server
+from Config import Config
+import sys
+import signal
+import logging
 print("Starting...")
 #!../.venv/bin/python
-import logging
-import signal
-import sys
-from Config import Config
-from Server import Server
-from Power_System import Power_System
-from Drone import Drone
-from Database import Database
 
 # Configure logs to log both in the console and to a file
 logger = logging.getLogger(__name__)

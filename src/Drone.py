@@ -9,6 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class Drone:
     def start():
         # Load_Cell.start()
@@ -34,7 +35,6 @@ class Drone:
         time.sleep(2)
         Drone.power.off()
 
-
     def arm():
         logger.info("Arming ESC")
         Drone.power.on()
@@ -45,7 +45,6 @@ class Drone:
         time.sleep(3)
 
         logger.info("ESC armed")
-
 
     def calibrate():
         logger.info("Starting calibration")
@@ -75,5 +74,3 @@ class Drone:
         value = (value * 2.0) - 1.0
         logger.info(f"Set throttle to {value}")
         Drone.throttle.value = value
-
-

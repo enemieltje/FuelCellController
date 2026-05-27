@@ -378,12 +378,12 @@ let interval
 
 document.getElementById('startButton').addEventListener('click', () => {
     console.log('Start system');
-    // fetch('/api/button/start')
+    fetch('/api/button/start')
 });
 
 document.getElementById('stopButton').addEventListener('click', () => {
     console.log('Stop system');
-    // fetch('/api/button/stop')
+    fetch('/api/button/stop')
 });
 
 document.getElementById('enableDrone').addEventListener('click', () => {
