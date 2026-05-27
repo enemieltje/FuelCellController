@@ -13,7 +13,7 @@ echo "Installing Packages..."
 ./.venv/bin/pip3 install lgpio pigpio gpio   # gpio pins
 ./.venv/bin/pip3 install gpiozero            # Button input
 ./.venv/bin/pip3 install hx711               # Load cell
-./.venv/bin/pip3 install pandas    # CSV export
+./.venv/bin/pip3 install pandas openpyxl     # CSV/Excel export
 
 # Start the program
 echo "Done! Starting Program"

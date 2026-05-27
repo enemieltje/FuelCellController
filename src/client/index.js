@@ -84,13 +84,22 @@ function formatDate(value) {
     return new Date(value).toLocaleString();
 }
 
-function downloadRun(runId) {
+function downloadRunCsv(runId) {
     if (!runId)
     {
         return;
     }
 
     window.location.href = `/api/runs/${runId}/csv`;
+}
+
+function downloadRunXlsx(runId) {
+    if (!runId)
+    {
+        return;
+    }
+
+    window.location.href = `/api/runs/${runId}/xlsx`;
 }
 
 async function postJson(url, data = {}) {
@@ -297,15 +306,25 @@ function renderRuns(runs) {
         notesCell.appendChild(notesInput);
         row.appendChild(notesCell);
 
-        // Download button
-        const downloadCell = document.createElement('td');
+        // CSV Download button
+        const downloadCsvCell = document.createElement('td');
 
-        const downloadButton = document.createElement('button');
-        downloadButton.innerText = 'Download';
-        downloadButton.addEventListener('click', () => downloadRun(run.id));
+        const downloadCsvButton = document.createElement('button');
+        downloadCsvButton.innerText = 'Download';
+        downloadCsvButton.addEventListener('click', () => downloadRunCsv(run.id));
 
-        downloadCell.appendChild(downloadButton);
-        row.appendChild(downloadCell);
+        downloadCsvCell.appendChild(downloadCsvButton);
+        row.appendChild(downloadCsvCell);
+
+        // Excel Download button
+        const downloadXlsxCell = document.createElement('td');
+
+        const downloadXlsxButton = document.createElement('button');
+        downloadXlsxButton.innerText = 'Download';
+        downloadXlsxButton.addEventListener('click', () => downloadRunXlsx(run.id));
+
+        downloadXlsxCell.appendChild(downloadXlsxButton);
+        row.appendChild(downloadXlsxCell);
 
         // Save button
         const saveCell = document.createElement('td');
@@ -465,7 +484,7 @@ document.getElementById('downloadCurrentRunButton').addEventListener('click', ()
     console.log('Download Run');
     if (activeRun)
     {
-        downloadRun(activeRun.id);
+        downloadRunCsv(activeRun.id);
     }
 });
 

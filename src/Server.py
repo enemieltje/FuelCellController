@@ -135,6 +135,21 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
 
             self.send_csv(run_id)
 
+        elif path.startswith("/api/runs/") and path.endswith("/xlsx"):
+            parts = path.strip("/").split("/")
+
+            if len(parts) != 4:
+                self.send_error(404, "Unknown run Excel endpoint")
+                return
+
+            try:
+                run_id = int(parts[2])
+            except ValueError:
+                self.send_error(400, "Invalid run id")
+                return
+
+            self.send_excel(run_id)
+
         else:
             # An unknown request was sent
             server.SimpleHTTPRequestHandler.do_GET(self)
@@ -301,6 +316,25 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
         self.end_headers()
 
         self.wfile.write(csv_text.encode("utf-8"))
+
+    def send_excel(self, run_id):
+        excel_bytes = Database.export_run_excel(run_id)
+        run_name = Database.get_run_name(run_id)
+        filename = f"{run_name}.xlsx"
+
+        self.send_response(server.HTTPStatus.OK)
+        self.send_header(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        self.send_header(
+            "Content-Disposition",
+            f'attachment; filename="{filename}"'
+        )
+        self.send_header("Content-Length", str(len(excel_bytes)))
+        self.end_headers()
+
+        self.wfile.write(excel_bytes)
 
     def sendFile(self, filePath):
         # This opens a file on the raspberry and sends that to the webpage
