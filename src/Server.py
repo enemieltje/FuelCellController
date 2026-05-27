@@ -93,6 +93,9 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
             Drone.calibrate()
             self.redirectHome()
 
+        elif path == "/api/get/sensorData":
+            self.send_json(Database.get_all_sensors())
+
         elif path == "/api/get/power/fuelcell":
             self.send_power(SENSOR_ID.FUELCELL_POWER)
 
@@ -286,18 +289,18 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
 
         self.wfile.write(response_data.encode("utf-8"))
 
-
     def send_csv(self, run_id):
         csv_text = Database.export_run_csv(run_id)
-        filename = f"run-{run_id}.csv"
+        run_name = Database.get_run_name(run_id)
+        filename = f"{run_name}.csv"
 
         self.send_response(server.HTTPStatus.OK)
         self.send_header("Content-Type", "text/csv")
-        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.send_header("Content-Disposition",
+                         f'attachment; filename="{filename}"')
         self.end_headers()
 
         self.wfile.write(csv_text.encode("utf-8"))
-
 
     def sendFile(self, filePath):
         # This opens a file on the raspberry and sends that to the webpage
@@ -315,7 +318,8 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
 
     def end_headers(self):
         # Prevent browsers from cacheing old versions
-        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header(
+            "Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         self.send_header("Pragma", "no-cache")
         self.send_header("Expires", "0")
         super().end_headers()

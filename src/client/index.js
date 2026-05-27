@@ -121,38 +121,32 @@ async function fetchValues() {
 
     const now = new Date().toLocaleTimeString();
 
-    const fc = await getData('power/fuelcell');
-    const battery = await getData('power/battery');
-    const drone = await getData('power/drone');
-    const pressure = await getData('pressure');
-    const soc = await getData('battery');
-    const thrust = await getData('thrust');
+    const sensorData = await getData('sensorData')
+    // console.log(sensorData)
 
-    updateValue('fuelCellPower', fc.power.toFixed(1) + ' W');
-    updateValue('fuelCellVoltage', fc.voltage.toFixed(1) + ' V');
-    updateValue('fuelCellCurrent', fc.current.toFixed(1) + ' A');
+    updateValue('fuelCellPower', sensorData.FUELCELL_POWER.toFixed(1) + ' W');
+    updateValue('fuelCellVoltage', sensorData.FUELCELL_VOLTAGE.toFixed(1) + ' V');
+    updateValue('fuelCellCurrent', sensorData.FUELCELL_CURRENT.toFixed(1) + ' A');
 
-    updateValue('batteryPower', battery.power.toFixed(1) + ' W');
-    updateValue('batteryVoltage', battery.voltage.toFixed(1) + ' V');
-    updateValue('batteryCurrent', battery.current.toFixed(1) + ' A');
-    updateValue('batterySOC', soc.toFixed(0) + ' %');
-    updateValue('batteryPercentage', soc.toFixed(0) + ' %');
+    updateValue('batteryPower', sensorData.BATTERY_POWER.toFixed(1) + ' W');
+    updateValue('batteryVoltage', sensorData.BATTERY_VOLTAGE.toFixed(1) + ' V');
+    updateValue('batteryCurrent', sensorData.BATTERY_CURRENT.toFixed(1) + ' A');
+    updateValue('batterySOC', sensorData.BATTERY_SOC.toFixed(0) + ' %');
+    updateValue('batteryPercentage', sensorData.BATTERY_SOC.toFixed(0) + ' %');
 
-    updateValue('motorPower', drone.power.toFixed(1) + ' W');
-    updateValue('motorVoltage', drone.voltage.toFixed(1) + ' V');
-    updateValue('motorCurrent', drone.current.toFixed(1) + ' A');
-    updateValue('motorThrust', thrust.toFixed(1) + ' kg');
+    updateValue('motorPower', sensorData.LOAD_POWER.toFixed(1) + ' W');
+    updateValue('motorVoltage', sensorData.LOAD_VOLTAGE.toFixed(1) + ' V');
+    updateValue('motorCurrent', sensorData.LOAD_CURRENT.toFixed(1) + ' A');
+    updateValue('motorThrust', sensorData.THRUST.toFixed(1) + ' kg');
 
-    updateValue('pressureValue', pressure.toFixed(2) + ' bar');
+    updateValue('pressureValue', sensorData.PRESSURE.toFixed(2) + ' bar');
 
-    addData(fuelCellChart, now, fc.power);
-    addData(batteryChart, now, battery.power);
-    addData(motorChart, now, drone.power);
-    addData(pressureChart, now, pressure);
-    addData(socChart, now, soc);
-    addData(thrustChart, now, thrust);
-
-
+    addData(fuelCellChart, now, sensorData.FUELCELL_POWER);
+    addData(batteryChart, now, sensorData.BATTERY_POWER);
+    addData(motorChart, now, sensorData.LOAD_POWER);
+    addData(pressureChart, now, sensorData.PRESSURE);
+    addData(socChart, now, sensorData.BATTERY_SOC);
+    addData(thrustChart, now, sensorData.THRUST);
 }
 
 function getData(varName) {
@@ -161,7 +155,7 @@ function getData(varName) {
         fetch(`/api/get/${varName}`)
             .then(response => {
                 // after the response has been received
-                console.log(response)
+                // console.log(response)
                 if (!response.ok)
                 {
                     throw new Error("Network response was not ok");
@@ -170,7 +164,7 @@ function getData(varName) {
             })
             .then(data => {
                 // after data has been converted
-                console.log(data)
+                // console.log(data)
                 resolve(data)
             })
             .catch(error => {
@@ -184,6 +178,23 @@ function getData(varName) {
 // =============================
 
 let activeRun = null;
+
+async function updateRun(id, data) {
+    const response = await fetch(`/api/runs/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    });
+
+    if (!response.ok)
+    {
+        throw new Error('Failed to update run');
+    }
+
+    return response.json();
+}
 
 async function fetchCurrentRun() {
     const response = await fetch('/api/runs/current');
@@ -247,7 +258,7 @@ function renderRuns(runs) {
     {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
-        cell.colSpan = 7;
+        cell.colSpan = 8;
         cell.innerText = 'No runs found';
         row.appendChild(cell);
         tbody.appendChild(row);
@@ -256,31 +267,88 @@ function renderRuns(runs) {
 
     runs.forEach((run) => {
         const row = document.createElement('tr');
-        const values = [
-            run.id,
-            run.name || '',
-            formatDate(run.started_at),
-            run.ended_at ? formatDate(run.ended_at) : 'Active',
-            run.sample_count,
-            run.notes || ''
-        ];
 
-        values.forEach((value) => {
-            const cell = document.createElement('td');
-            cell.innerText = value;
-            row.appendChild(cell);
-        });
+        // ID
+        addCell(row, run.id);
 
-        const actionCell = document.createElement('td');
+        // Editable Name
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = run.name || '';
+
+        const nameCell = document.createElement('td');
+        nameCell.appendChild(nameInput);
+        row.appendChild(nameCell);
+
+        // Started
+        addCell(row, formatDate(run.started_at));
+
+        // Ended
+        addCell(row, run.ended_at ? formatDate(run.ended_at) : 'Active');
+
+        // Samples
+        addCell(row, run.sample_count);
+
+        // Editable Notes
+        const notesInput = document.createElement('textarea');
+        notesInput.value = run.notes || '';
+
+        const notesCell = document.createElement('td');
+        notesCell.appendChild(notesInput);
+        row.appendChild(notesCell);
+
+        // Download button
+        const downloadCell = document.createElement('td');
+
         const downloadButton = document.createElement('button');
-        downloadButton.type = 'button';
         downloadButton.innerText = 'Download';
         downloadButton.addEventListener('click', () => downloadRun(run.id));
-        actionCell.appendChild(downloadButton);
-        row.appendChild(actionCell);
+
+        downloadCell.appendChild(downloadButton);
+        row.appendChild(downloadCell);
+
+        // Save button
+        const saveCell = document.createElement('td');
+
+        const saveButton = document.createElement('button');
+        saveButton.innerText = 'Save';
+
+        saveButton.addEventListener('click', async () => {
+            saveButton.disabled = true;
+
+            try
+            {
+                await updateRun(run.id, {
+                    name: nameInput.value,
+                    notes: notesInput.value
+                });
+
+                saveButton.innerText = 'Saved';
+
+                setTimeout(() => {
+                    saveButton.innerText = 'Save';
+                    saveButton.disabled = false;
+                }, 1000);
+
+            } catch (err)
+            {
+                console.error(err);
+                saveButton.innerText = 'Error';
+                saveButton.disabled = false;
+            }
+        });
+
+        saveCell.appendChild(saveButton);
+        row.appendChild(saveCell);
 
         tbody.appendChild(row);
     });
+}
+
+function addCell(row, value) {
+    const cell = document.createElement('td');
+    cell.innerText = value;
+    row.appendChild(cell);
 }
 
 async function refreshRuns() {
@@ -311,15 +379,11 @@ let interval
 document.getElementById('startButton').addEventListener('click', () => {
     console.log('Start system');
     // fetch('/api/button/start')
-    if (!interval)
-        interval = setInterval(fetchValues, 1000);
 });
 
 document.getElementById('stopButton').addEventListener('click', () => {
     console.log('Stop system');
     // fetch('/api/button/stop')
-    clearInterval(interval)
-    interval = 0
 });
 
 document.getElementById('enableDrone').addEventListener('click', () => {
@@ -344,6 +408,8 @@ document.getElementById('calibrateDrone').addEventListener('click', () => {
 
 document.getElementById('newRunButton').addEventListener('click', async () => {
     console.log('New Run');
+    if (!interval)
+        interval = setInterval(fetchValues, 1000);
     try
     {
         await postJson('/api/runs/start', {
@@ -379,8 +445,14 @@ document.getElementById('saveRunButton').addEventListener('click', async () => {
 
 document.getElementById('stopRunButton').addEventListener('click', async () => {
     console.log('Stop Run');
+    clearInterval(interval)
+    interval = 0
     try
     {
+        await postJson('/api/runs/current', {
+            name: document.getElementById('runName').value,
+            notes: document.getElementById('runNotes').value
+        });
         await postJson('/api/runs/stop');
         await refreshRuns();
     } catch (err)

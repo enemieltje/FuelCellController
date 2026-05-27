@@ -8,6 +8,8 @@ from pathlib import Path
 from enum import IntEnum
 
 logger = logging.getLogger(__name__)
+
+
 class SENSOR_ID(IntEnum):
     FUELCELL_POWER = 1
     FUELCELL_VOLTAGE = 2
@@ -23,6 +25,7 @@ class SENSOR_ID(IntEnum):
     THRUST = 12
     THROTTLE = 13
 
+
 class Database:
 
     def start():
@@ -35,17 +38,17 @@ class Database:
         Database.thread.start()
 
     def stop():
+        Database.stop_run()
         Database.running = False
         Database.queue.put({
             "action": "stop",
         })
         Database.thread.join()
 
-
     def worker():
         Database.start_db()
-        Database.current_run = Database.create_run()
-        logger.debug(f"Started Run:\n{Database.current_run}")
+        # Database.current_run = Database.create_run()
+        # logger.debug(f"Started Run:\n{Database.current_run}")
 
         while Database.running:
             request = Database.queue.get()
@@ -67,6 +70,9 @@ class Database:
             elif action == "get_runs":
                 Database._get_runs(request)
 
+            elif action == "get_run_name":
+                Database._get_run_name(request)
+
             elif action == "start_run":
                 Database._start_run(request)
 
@@ -79,10 +85,8 @@ class Database:
             elif action == "export_run_csv":
                 Database._export_run_csv(request)
 
-
             elif action == "stop":
                 Database.stop_db()
-
 
     def start_db(filename="data/sensors.db"):
         logger.debug("Connecting to Database...")
@@ -98,10 +102,8 @@ class Database:
         Database.conn.commit()
         logger.debug("Database Connected!")
 
-
     def stop_db():
         Database.conn.close()
-
 
     def create_run():
         sql = Database.load_sql("insert_run")
@@ -115,7 +117,6 @@ class Database:
 
         return Database.cursor.lastrowid
 
-
     def row_to_dict(row):
         if row is None:
             return None
@@ -125,7 +126,6 @@ class Database:
             for description, value in zip(Database.cursor.description, row)
         }
 
-
     def request(action, **kwargs):
         response_queue = Queue()
         kwargs["action"] = action
@@ -133,10 +133,15 @@ class Database:
         Database.queue.put(kwargs)
         return response_queue.get()
 
-
     def load_sql(name):
         return Path(f"src/sql/{name}.sql").read_text()
 
+    def get_all_sensors():
+        logger.debug("Getting All Sensors")
+        sensor_data = {sensor.name: Database.get_latest(
+            sensor.value) for sensor in SENSOR_ID}
+        logger.debug(sensor_data)
+        return sensor_data
 
     def insert(sensor_id, value):
         if Database.current_run is None:
@@ -150,7 +155,6 @@ class Database:
             "value": value,
         })
 
-
     def _insert(request):
         sql = Database.load_sql("insert_sample")
 
@@ -161,7 +165,6 @@ class Database:
             request["value"]
         ))
         Database.conn.commit()
-
 
     def get_latest(sensor_id):
         logger.debug(f"Getting latest sensor {sensor_id}")
@@ -175,21 +178,20 @@ class Database:
 
         return response_queue.get()  # blocks until result arrives
 
-
     def _get_latest(request):
         sql = Database.load_sql("get_latest")
 
         Database.cursor.execute(sql, (request["sensor_id"],))
         result = Database.cursor.fetchone()
+        if result is None:
+            result = (0, 0, "", 0, 0)
+        logger.debug(result)
 
         if request.get("response_queue"):
             request["response_queue"].put(result[4])
 
-
-
     def get_current_run():
         return Database.request("get_current_run")
-
 
     def _get_current_run(request):
         run = None
@@ -203,18 +205,17 @@ class Database:
 
         request["response_queue"].put(run)
 
-
     def get_runs():
-        logger.debug("Getting Runs")
+        # logger.debug("Getting Runs")
         return Database.request("get_runs")
-
 
     def _get_runs(request):
         sql = Database.load_sql("get_runs")
 
         Database.cursor.execute(sql)
         rows = Database.cursor.fetchall()
-        columns = [description[0] for description in Database.cursor.description]
+        columns = [description[0]
+                   for description in Database.cursor.description]
         runs = [
             {column: value for column, value in zip(columns, row)}
             for row in rows
@@ -222,10 +223,8 @@ class Database:
 
         request["response_queue"].put(runs)
 
-
     def start_run(name=None, notes=None):
         return Database.request("start_run", name=name, notes=notes)
-
 
     def _start_run(request):
         if Database.current_run is not None:
@@ -235,6 +234,7 @@ class Database:
             })
 
         Database.current_run = Database.create_run()
+        logger.info(f"Started New Run: {Database.current_run}")
 
         if request.get("name") is not None or request.get("notes") is not None:
             Database._update_run({
@@ -246,10 +246,8 @@ class Database:
 
         Database._get_current_run(request)
 
-
     def update_run(run_id, name=None, notes=None):
         return Database.request("update_run", run_id=run_id, name=name, notes=notes)
-
 
     def _update_run(request):
         sql = Database.load_sql("update_run")
@@ -266,12 +264,11 @@ class Database:
                 "SELECT * FROM test_runs WHERE id = ?",
                 (request["run_id"],)
             )
-            request["response_queue"].put(Database.row_to_dict(Database.cursor.fetchone()))
-
+            request["response_queue"].put(
+                Database.row_to_dict(Database.cursor.fetchone()))
 
     def stop_run(run_id=None):
         return Database.request("stop_run", run_id=run_id)
-
 
     def _stop_run(request):
         run_id = request.get("run_id") or Database.current_run
@@ -281,6 +278,7 @@ class Database:
                 request["response_queue"].put(None)
             return
 
+        logger.info(f"Stopped Run: {run_id}")
         sql = Database.load_sql("stop_run")
         Database.cursor.execute(sql, (
             datetime.now().isoformat(),
@@ -296,17 +294,15 @@ class Database:
                 "SELECT * FROM test_runs WHERE id = ?",
                 (run_id,)
             )
-            request["response_queue"].put(Database.row_to_dict(Database.cursor.fetchone()))
-
+            request["response_queue"].put(
+                Database.row_to_dict(Database.cursor.fetchone()))
 
     def export_run_csv(run_id):
         return Database.request("export_run_csv", run_id=run_id)
 
-
     def _export_run_csv(request):
         csv_text = Database._get_csv(request)
         request["response_queue"].put(csv_text)
-
 
     def get_csv():
         logger.debug(f"Requesting csv ({Database.current_run})")
@@ -321,9 +317,26 @@ class Database:
 
         df = pd.read_sql_query(sql, Database.conn, params=(request["run_id"],))
         df["timestamp"] = pd.to_datetime(df["timestamp"])
-        pivot_df = df.pivot(index="timestamp", columns="sensor_id", values="value")
-        pivot_df = pivot_df.rename(columns={sensor.value: sensor.name for sensor in SENSOR_ID})
+        pivot_df = df.pivot(index="timestamp",
+                            columns="sensor_id", values="value")
+        pivot_df = pivot_df.rename(
+            columns={sensor.value: sensor.name for sensor in SENSOR_ID})
 
         return pivot_df.to_csv(index=True)
 
+    def get_run_name(run_id=None):
+        return Database.request("get_run_name", run_id=run_id)
 
+    def _get_run_name(request):
+        logger.debug(f"Getting run name ({request["run_id"]})")
+        run_id = request.get("run_id") or Database.current_run
+        sql = Database.load_sql("get_run_name")
+
+        Database.cursor.execute(sql, (
+            run_id,
+        ))
+        result = Database.cursor.fetchone()
+        if result is None:
+            result = (0, 0)
+
+        request["response_queue"].put(result[1])
