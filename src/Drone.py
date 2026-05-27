@@ -32,7 +32,7 @@ class Drone:
         Drone.throttle_sensor.stop()
         Drone.set_throttle(0.0)
         Drone.throttle.detach()
-        time.sleep(2)
+        time.sleep(1)
         Drone.power.off()
 
     def arm():

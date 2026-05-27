@@ -48,6 +48,7 @@ SENSOR_COLORS = {
 
 
 class Database:
+    queue: Queue
 
     def start():
         logger.info("Starting Database")
@@ -150,6 +151,10 @@ class Database:
             for description, value in zip(Database.cursor.description, row)
         }
 
+    def post(action, **kwargs):
+        kwargs["action"] = action
+        Database.queue.put(kwargs)
+
     def request(action, **kwargs):
         response_queue = Queue()
         kwargs["action"] = action
@@ -164,7 +169,7 @@ class Database:
         logger.debug("Getting All Sensors")
         sensor_data = {sensor.name: Database.get_latest(
             sensor.value) for sensor in SENSOR_ID}
-        logger.debug(sensor_data)
+        # logger.debug(sensor_data)
         return sensor_data
 
     def insert(sensor_id, value):
@@ -191,7 +196,7 @@ class Database:
         Database.conn.commit()
 
     def get_latest(sensor_id):
-        logger.debug(f"Getting latest sensor {sensor_id}")
+        # logger.debug(f"Getting latest sensor {sensor_id}")
         response_queue = Queue()
 
         Database.queue.put({
@@ -209,7 +214,7 @@ class Database:
         result = Database.cursor.fetchone()
         if result is None:
             result = (0, 0, "", 0, 0)
-        logger.debug(result)
+        # logger.debug(result)
 
         if request.get("response_queue"):
             request["response_queue"].put(result[4])
@@ -248,7 +253,7 @@ class Database:
         request["response_queue"].put(runs)
 
     def start_run(name=None, notes=None):
-        return Database.request("start_run", name=name, notes=notes)
+        Database.post("start_run", name=name, notes=notes)
 
     def _start_run(request):
         if Database.current_run is not None:
@@ -268,12 +273,13 @@ class Database:
                 "response_queue": None,
             })
 
-        Database._get_current_run(request)
-
     def update_run(run_id, name=None, notes=None):
-        return Database.request("update_run", run_id=run_id, name=name, notes=notes)
+        logger.debug(
+            f"Received update run. Queue is currently about {Database.queue.qsize()}")
+        Database.post("update_run", run_id=run_id, name=name, notes=notes)
 
     def _update_run(request):
+        logger.debug("_update run")
         sql = Database.load_sql("update_run")
 
         Database.cursor.execute(sql, (
@@ -283,7 +289,9 @@ class Database:
         ))
         Database.conn.commit()
 
+        logger.debug("getting response queue")
         if request.get("response_queue"):
+            logger.debug("found response queue")
             Database.cursor.execute(
                 "SELECT * FROM test_runs WHERE id = ?",
                 (request["run_id"],)
@@ -292,7 +300,7 @@ class Database:
                 Database.row_to_dict(Database.cursor.fetchone()))
 
     def stop_run(run_id=None):
-        return Database.request("stop_run", run_id=run_id)
+        Database.post("stop_run", run_id=run_id)
 
     def _stop_run(request):
         run_id = request.get("run_id") or Database.current_run

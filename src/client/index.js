@@ -102,6 +102,21 @@ function downloadRunXlsx(runId) {
     window.location.href = `/api/runs/${runId}/xlsx`;
 }
 
+function postJsonAsync(url, data = {}) {
+    return new Promise((resolve) => {
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        }).then((response) => {
+            resolve(response.json())
+        })
+
+    })
+}
+
 async function postJson(url, data = {}) {
     const response = await fetch(url, {
         method: 'POST',
@@ -451,11 +466,12 @@ document.getElementById('saveRunButton').addEventListener('click', async () => {
 
     try
     {
-        await postJson('/api/runs/current', {
+        postJsonAsync('/api/runs/current', {
             name: document.getElementById('runName').value,
             notes: document.getElementById('runNotes').value
+        }).then((v) => {
+            refreshRuns()
         });
-        await refreshRuns();
     } catch (err)
     {
         console.error('Failed to save run:', err);
@@ -468,12 +484,16 @@ document.getElementById('stopRunButton').addEventListener('click', async () => {
     interval = 0
     try
     {
-        await postJson('/api/runs/current', {
+        console.log("Posting name and notes")
+        postJsonAsync('/api/runs/current', {
             name: document.getElementById('runName').value,
             notes: document.getElementById('runNotes').value
         });
-        await postJson('/api/runs/stop');
-        await refreshRuns();
+        console.log("stopping run")
+        postJsonAsync('/api/runs/stop').then((v => {
+            console.log("refreshing runs")
+            refreshRuns();
+        }))
     } catch (err)
     {
         console.error('Failed to stop run:', err);
