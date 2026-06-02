@@ -6,8 +6,9 @@ from openpyxl.chart import Series, Reference, ScatterChart
 from openpyxl.drawing.line import LineProperties
 import pandas as pd
 import threading
+import time
 from datetime import datetime
-from queue import Queue
+from queue import Empty, Queue
 from pathlib import Path
 from enum import IntEnum
 
@@ -49,12 +50,20 @@ SENSOR_COLORS = {
 
 class Database:
     queue: Queue
+    INSERT_BATCH_SIZE = 500
+    INSERT_FLUSH_INTERVAL = 0.5
+    MAX_QUEUE_SIZE = 50000
+    _sql_cache = {}
+    latest_values = {}
+    latest_values_lock = threading.Lock()
 
     def start():
         logger.info("Starting Database")
-        Database.queue = Queue()
+        Database.queue = Queue(maxsize=Database.MAX_QUEUE_SIZE)
         Database.running = True
         Database.current_run = None
+        Database.latest_values = {}
+        Database.latest_values_lock = threading.Lock()
 
         Database.thread = threading.Thread(target=Database.worker, daemon=True)
         Database.thread.start()
@@ -71,16 +80,36 @@ class Database:
         Database.start_db()
         # Database.current_run = Database.create_run()
         # logger.debug(f"Started Run:\n{Database.current_run}")
+        pending_samples = []
+        last_flush = time.monotonic()
 
-        while Database.running:
-            request = Database.queue.get()
+        while True:
+            try:
+                request = Database.queue.get(
+                    timeout=Database.INSERT_FLUSH_INTERVAL)
+            except Empty:
+                if pending_samples:
+                    Database._flush_inserts(pending_samples)
+                    last_flush = time.monotonic()
+                continue
 
             action = request["action"]
 
             if action == "insert":
-                Database._insert(request)
+                pending_samples.append(Database._sample_tuple(request))
+                if (
+                    len(pending_samples) >= Database.INSERT_BATCH_SIZE
+                    or time.monotonic() - last_flush >= Database.INSERT_FLUSH_INTERVAL
+                ):
+                    Database._flush_inserts(pending_samples)
+                    last_flush = time.monotonic()
+                continue
 
-            elif action == "get_latest":
+            if pending_samples:
+                Database._flush_inserts(pending_samples)
+                last_flush = time.monotonic()
+
+            if action == "get_latest":
                 Database._get_latest(request)
 
             elif action == "get_csv":
@@ -112,11 +141,14 @@ class Database:
 
             elif action == "stop":
                 Database.stop_db()
+                break
 
     def start_db(filename="data/sensors.db"):
         logger.debug("Connecting to Database...")
         Database.conn = sqlite3.connect(filename)
         Database.cursor = Database.conn.cursor()
+        Database.cursor.execute("PRAGMA journal_mode=WAL")
+        Database.cursor.execute("PRAGMA synchronous=NORMAL")
 
         sql = Database.load_sql("create_run_table")
         Database.cursor.execute(sql)
@@ -163,7 +195,9 @@ class Database:
         return response_queue.get()
 
     def load_sql(name):
-        return Path(f"src/sql/{name}.sql").read_text()
+        if name not in Database._sql_cache:
+            Database._sql_cache[name] = Path(f"src/sql/{name}.sql").read_text()
+        return Database._sql_cache[name]
 
     def get_all_sensors():
         logger.debug("Getting All Sensors")
@@ -176,20 +210,42 @@ class Database:
         if Database.current_run is None:
             return
 
+        timestamp = datetime.now().isoformat()
+        with Database.latest_values_lock:
+            Database.latest_values[sensor_id] = value
+
         # logger.debug(f"Inserting sensor {sensor_id}")
         Database.queue.put({
             "action": "insert",
             "run_id": Database.current_run,
-            "sensor_id": sensor_id,
+            "timestamp": timestamp,
+            "sensor_id": int(sensor_id),
             "value": value,
         })
+
+    def _sample_tuple(request):
+        return (
+            request["run_id"],
+            request["timestamp"],
+            request["sensor_id"],
+            request["value"]
+        )
+
+    def _flush_inserts(samples):
+        if not samples:
+            return
+
+        sql = Database.load_sql("insert_sample")
+        Database.cursor.executemany(sql, samples)
+        Database.conn.commit()
+        samples.clear()
 
     def _insert(request):
         sql = Database.load_sql("insert_sample")
 
         Database.cursor.execute(sql, (
             request["run_id"],
-            datetime.now().isoformat(),
+            request.get("timestamp") or datetime.now().isoformat(),
             request["sensor_id"],
             request["value"]
         ))
@@ -197,6 +253,10 @@ class Database:
 
     def get_latest(sensor_id):
         # logger.debug(f"Getting latest sensor {sensor_id}")
+        with Database.latest_values_lock:
+            if sensor_id in Database.latest_values:
+                return Database.latest_values[sensor_id]
+
         response_queue = Queue()
 
         Database.queue.put({
@@ -361,7 +421,7 @@ class Database:
         return pivot_df
 
     def _get_csv(request):
-        logger.debug(f"Getting csv ({request["run_id"]})")
+        logger.debug(f"Getting csv ({request['run_id']})")
         df = Database._get_df(request)
         return df.to_csv(index=True)
 
@@ -369,7 +429,7 @@ class Database:
         return Database.request("export_run_excel", run_id=run_id)
 
     def _export_run_excel(request):
-        logger.debug(f"Getting excel ({request["run_id"]})")
+        logger.debug(f"Getting excel ({request['run_id']})")
         df = Database._get_df(request)
 
         # Write to in-memory buffer
@@ -416,6 +476,36 @@ class Database:
                 "FUELCELL_CURRENT",
             ],
             chart_position="O34"
+        )
+
+        Database.add_sensor_chart(
+            ws,
+            title="Battery Power",
+            primary_axis_title="Power (W)",
+            primary_sensors=[
+                "BATTERY_POWER",
+            ],
+            secondary_axis_title="Voltage (v), Current (A)",
+            secondary_sensors=[
+                "BATTERY_VOLTAGE",
+                "BATTERY_CURRENT",
+            ],
+            chart_position="O64"
+        )
+
+        Database.add_sensor_chart(
+            ws,
+            title="Load Power",
+            primary_axis_title="Power (W)",
+            primary_sensors=[
+                "LOAD_POWER",
+            ],
+            secondary_axis_title="Voltage (v), Current (A)",
+            secondary_sensors=[
+                "LOAD_VOLTAGE",
+                "LOAD_CURRENT",
+            ],
+            chart_position="O94"
         )
 
         final_buffer = io.BytesIO()
@@ -518,7 +608,7 @@ class Database:
         return Database.request("get_run_name", run_id=run_id)
 
     def _get_run_name(request):
-        logger.debug(f"Getting run name ({request["run_id"]})")
+        logger.debug(f"Getting run name ({request['run_id']})")
         run_id = request.get("run_id") or Database.current_run
         sql = Database.load_sql("get_run_name")
 

@@ -14,7 +14,7 @@ class Sensor:
         self.sensor_id = sensor_id
         self.running = False
         self.value = 0
-        self.interval = 50
+        self.interval = 100
         self.start()
 
     def start(self):

@@ -510,8 +510,12 @@ document.getElementById('downloadCurrentRunButton').addEventListener('click', ()
 
 const throttleSlider = document.getElementById('throttleSlider');
 const throttleValue = document.getElementById('throttleValue');
+let lastThrottleChangeTime = Date.now()
 
 throttleSlider.addEventListener('input', async () => {
+    // const now = Date.now()
+    // if ((now - lastThrottleChangeTime) < 200) return
+    // lastThrottleChangeTime = now
 
     const value = parseFloat(throttleSlider.value);
 
@@ -521,7 +525,7 @@ throttleSlider.addEventListener('input', async () => {
     // Send to backend
     try
     {
-
+        console.log("sending throttle")
         await fetch('/api/set/throttle', {
             method: 'POST',
             headers: {
@@ -531,6 +535,7 @@ throttleSlider.addEventListener('input', async () => {
                 throttle: value
             })
         });
+        console.log("sent")
 
     } catch (err)
     {
