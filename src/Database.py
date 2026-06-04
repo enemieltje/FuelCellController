@@ -26,9 +26,12 @@ class SENSOR_ID(IntEnum):
     LOAD_VOLTAGE = 8
     LOAD_CURRENT = 9
     BATTERY_SOC = 10
-    PRESSURE = 11
-    THRUST = 12
-    THROTTLE = 13
+    THRUST = 11
+    THROTTLE = 12
+    PRESSURE = 13
+    UPSTREAM_PRESSURE = 14
+    DOWNSTREAM_PRESSURE = 15
+    FLOW = 16
 
 
 SENSOR_COLORS = {
@@ -207,12 +210,13 @@ class Database:
         return sensor_data
 
     def insert(sensor_id, value):
-        if Database.current_run is None:
-            return
 
         timestamp = datetime.now().isoformat()
         with Database.latest_values_lock:
             Database.latest_values[sensor_id] = value
+
+        if Database.current_run is None:
+            return
 
         # logger.debug(f"Inserting sensor {sensor_id}")
         Database.queue.put({

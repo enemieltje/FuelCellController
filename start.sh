@@ -15,6 +15,7 @@ echo "Installing Packages..."
 ./.venv/bin/pip3 install hx711               # Load cell
 ./.venv/bin/pip3 install pandas openpyxl     # CSV/Excel export
 ./.venv/bin/pip3 install rpi-hardware-pwm
+./.venv/bin/pip3 install pyserial pymodbus bronkhorst-propar
 
 # Start the program
 echo "Done! Starting Program"

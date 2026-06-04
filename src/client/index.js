@@ -1,12 +1,4 @@
 
-// function start() {
-//     fetch('/button/start')
-// }
-// function stop() {
-//     fetch('/button/stop')
-// }
-
-
 // =============================
 // Chart Configuration
 // =============================
@@ -44,12 +36,54 @@ function createChart(canvasId, label, unit) {
     });
 }
 
-const fuelCellChart = createChart('fuelCellChart', 'Fuel Cell Power', 'W');
-const batteryChart = createChart('batteryChart', 'Battery Power', 'W');
-const motorChart = createChart('motorChart', 'Motor Power', 'W');
-const thrustChart = createChart('thrustChart', 'Thrust', 'kg');
-const pressureChart = createChart('pressureChart', 'Pressure', 'bar');
-const socChart = createChart('socChart', 'Battery SoC', '%');
+function createMultiChart(canvasId, datasets, unit) {
+    return new Chart(document.getElementById(canvasId), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: datasets.map(ds => ({
+                label: ds.label,
+                data: [],
+                tension: 0.25,
+                fill: false,
+                borderColor: ds.color
+            }))
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            scales: {
+                x: {
+                    ticks: { maxTicksLimit: 6 }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: unit
+                    }
+                }
+            }
+        }
+    });
+}
+const powerChart = createMultiChart('powerChart', [
+    { label: 'Fuel Cell Power', color: 'red' },
+    { label: 'Battery Power', color: 'blue' },
+    { label: 'Motor Power', color: 'green' }
+], 'W');
+
+const pressureChart = createMultiChart('pressureChart', [
+    { label: 'CGG Pressure', color: 'red' },
+    { label: 'Upstream Pressure', color: 'blue' },
+    { label: 'Downstream Pressure', color: 'green' }
+], 'bar');
+// const fuelCellChart = createChart('fuelCellChart', 'Fuel Cell Power', 'W');
+// const batteryChart = createChart('batteryChart', 'Battery Power', 'W');
+// const motorChart = createChart('motorChart', 'Motor Power', 'W');
+// const thrustChart = createChart('thrustChart', 'Thrust', 'kg');
+const flowChart = createChart('flowChart', 'Fuel Consumption', 'mg/s');
+// const socChart = createChart('socChart', 'Battery SoC', '%');
 
 
 // =============================
@@ -70,6 +104,23 @@ function addData(chart, label, value) {
     {
         chart.data.labels.shift();
         chart.data.datasets[0].data.shift();
+    }
+
+    chart.update();
+}
+
+function addMultiData(chart, label, values) {
+    chart.data.labels.push(label);
+
+    values.forEach((val, i) => {
+        chart.data.datasets[i].data.push(val);
+    });
+
+    // keep last 60 samples
+    if (chart.data.labels.length > 60)
+    {
+        chart.data.labels.shift();
+        chart.data.datasets.forEach(ds => ds.data.shift());
     }
 
     chart.update();
@@ -136,8 +187,7 @@ async function postJson(url, data = {}) {
 
 
 // =============================
-// Example Demo Data
-// Replace with real sensor polling
+// Data Updating
 // =============================
 
 
@@ -164,13 +214,35 @@ async function fetchValues() {
     updateValue('motorThrust', sensorData.THRUST.toFixed(1) + ' kg');
 
     updateValue('pressureValue', sensorData.PRESSURE.toFixed(2) + ' bar');
+    updateValue('upstreamPressureValue', sensorData.UPSTREAM_PRESSURE.toFixed(2) + ' bar');
+    updateValue('downstreamPressureValue', sensorData.DOWNSTREAM_PRESSURE.toFixed(2) + ' bar');
+    updateValue('flowValue', sensorData.FLOW.toFixed(4) + ' mg/s?');
 
-    addData(fuelCellChart, now, sensorData.FUELCELL_POWER);
-    addData(batteryChart, now, sensorData.BATTERY_POWER);
-    addData(motorChart, now, sensorData.LOAD_POWER);
-    addData(pressureChart, now, sensorData.PRESSURE);
-    addData(socChart, now, sensorData.BATTERY_SOC);
-    addData(thrustChart, now, sensorData.THRUST);
+    fetch("api/gas/get").then(async response => {
+        const gasType = await response.json()
+        console.log(`Received Gas Type: ${gasType}`)
+        updateValue("gasType", gasType)
+    })
+
+    // addData(fuelCellChart, now, sensorData.FUELCELL_POWER);
+    // addData(batteryChart, now, sensorData.BATTERY_POWER);
+    // addData(motorChart, now, sensorData.LOAD_POWER);
+    // addData(pressureChart, now, sensorData.PRESSURE);
+    // addData(socChart, now, sensorData.BATTERY_SOC);
+    // addData(thrustChart, now, sensorData.THRUST);
+    addData(flowChart, now, sensorData.FLOW);
+
+    addMultiData(powerChart, now, [
+        sensorData.FUELCELL_POWER,
+        sensorData.BATTERY_POWER,
+        sensorData.LOAD_POWER
+    ]);
+
+    addMultiData(pressureChart, now, [
+        sensorData.PRESSURE,
+        sensorData.UPSTREAM_PRESSURE,
+        sensorData.DOWNSTREAM_PRESSURE
+    ]);
 }
 
 function getData(varName) {
@@ -410,13 +482,25 @@ async function refreshRuns() {
 
 let interval
 
-document.getElementById('startButton').addEventListener('click', () => {
-    console.log('Start system');
+document.getElementById('startInterface').addEventListener('click', () => {
+    console.log('Start Interface');
+    if (!interval)
+        interval = setInterval(fetchValues, 1000);
+});
+
+document.getElementById('stopInterface').addEventListener('click', () => {
+    console.log('Stop Interface');
+    clearInterval(interval)
+    interval = 0
+});
+
+document.getElementById('startFC').addEventListener('click', () => {
+    console.log('Start Fuel Cell');
     fetch('/api/button/start')
 });
 
-document.getElementById('stopButton').addEventListener('click', () => {
-    console.log('Stop system');
+document.getElementById('stopFC').addEventListener('click', () => {
+    console.log('Stop Fuel Cell');
     fetch('/api/button/stop')
 });
 
@@ -480,8 +564,8 @@ document.getElementById('saveRunButton').addEventListener('click', async () => {
 
 document.getElementById('stopRunButton').addEventListener('click', async () => {
     console.log('Stop Run');
-    clearInterval(interval)
-    interval = 0
+    // clearInterval(interval)
+    // interval = 0
     try
     {
         console.log("Posting name and notes")
@@ -544,4 +628,20 @@ throttleSlider.addEventListener('input', async () => {
 
 });
 
+const gasTypeSelect = document.getElementById("gasTypeSelect");
+
+gasTypeSelect.addEventListener("change", async (event) => {
+    const gasType = event.target.value;
+    console.log(`Set gas to ${gasType}`)
+
+    fetch(`/api/gas/set/${gasType}`)
+    // .then(response => {
+    //     fetchValues();
+    // })
+});
+
 refreshRuns();
+fetchValues();
+
+// setInterval(fetchValues, 1000);
+

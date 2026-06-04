@@ -69,6 +69,9 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
         elif path == '/index.js':
             self.sendFile('src/client/index.js')
 
+        elif path == '/index.css':
+            self.sendFile('src/client/index.css')
+
         elif path == '/api/button/start':
             Power_System.enable()
             self.redirectHome()
@@ -93,6 +96,18 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
             Drone.calibrate()
             self.redirectHome()
 
+        elif path == '/api/gas/set/air':
+            Power_System.pressure_sensor.use_air()
+            self.redirectHome()
+
+        elif path == '/api/gas/set/hydrogen':
+            Power_System.pressure_sensor.use_hydrogen()
+            self.redirectHome()
+
+        elif path == '/api/gas/get':
+            logger.debug('Get gas')
+            self.send_value(Power_System.pressure_sensor.get_fluid_type())
+
         elif path == "/api/get/sensorData":
             self.send_json(Database.get_all_sensors())
 
@@ -106,13 +121,13 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
             self.send_power(SENSOR_ID.LOAD_POWER)
 
         elif path == "/api/get/pressure":
-            self.send_value(SENSOR_ID.PRESSURE)
+            self.send_db_value(SENSOR_ID.PRESSURE)
 
         elif path == "/api/get/battery":
-            self.send_value(SENSOR_ID.BATTERY_SOC)
+            self.send_db_value(SENSOR_ID.BATTERY_SOC)
 
         elif path == "/api/get/thrust":
-            self.send_value(SENSOR_ID.THRUST)
+            self.send_db_value(SENSOR_ID.THRUST)
 
         elif path == "/api/runs":
             self.send_json(Database.get_runs())
@@ -265,9 +280,12 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
         self.send_error(404)
         self.end_headers()
 
-    def send_value(self, sensor_id):
+    def send_db_value(self, sensor_id):
+        self.send_value(Database.get_latest(sensor_id))
+
+    def send_value(self, value):
         # Convert the data to a JSON string
-        response_data = json.dumps(Database.get_latest(sensor_id))
+        response_data = json.dumps(value)
 
         # Set the response headers and status
         self.send_response(server.HTTPStatus.OK)
