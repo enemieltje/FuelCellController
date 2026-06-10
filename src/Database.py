@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class SENSOR_ID(IntEnum):
+    """Stable ids written to the database for each measurement type."""
+
     FUELCELL_POWER = 1
     FUELCELL_VOLTAGE = 2
     FUELCELL_CURRENT = 3
@@ -55,6 +57,13 @@ SENSOR_COLORS = {
 
 
 class Database:
+    """Single-threaded database service.
+
+    Sensor threads are kept simple: they enqueue samples and continue reading
+    hardware. This worker owns the SQLite connection, batches inserts for speed,
+    and answers web-server requests through response queues.
+    """
+
     queue: Queue
     INSERT_BATCH_SIZE = 500
     INSERT_FLUSH_INTERVAL = 0.5
@@ -75,6 +84,9 @@ class Database:
         Database.thread.start()
 
     def stop():
+        if not getattr(Database, "running", False):
+            return
+
         Database.stop_run()
         Database.running = False
         Database.queue.put({
@@ -84,8 +96,6 @@ class Database:
 
     def worker():
         Database.start_db()
-        # Database.current_run = Database.create_run()
-        # logger.debug(f"Started Run:\n{Database.current_run}")
         pending_samples = []
         last_flush = time.monotonic()
 
@@ -151,6 +161,7 @@ class Database:
 
     def start_db(filename="data/sensors.db"):
         logger.debug("Connecting to Database...")
+        Path(filename).parent.mkdir(parents=True, exist_ok=True)
         Database.conn = sqlite3.connect(filename)
         Database.cursor = Database.conn.cursor()
         Database.cursor.execute("PRAGMA journal_mode=WAL")
@@ -202,6 +213,8 @@ class Database:
 
     def load_sql(name):
         if name not in Database._sql_cache:
+            # SQL lives in separate files to keep query text readable and easy
+            # to edit without digging through Python string literals.
             Database._sql_cache[name] = Path(f"src/sql/{name}.sql").read_text()
         return Database._sql_cache[name]
 
@@ -242,6 +255,8 @@ class Database:
         if not samples:
             return
 
+        # executemany is much faster than committing every sensor sample
+        # separately, especially when sensors are polling many times per second.
         sql = Database.load_sql("insert_sample")
         Database.cursor.executemany(sql, samples)
         Database.conn.commit()
@@ -422,7 +437,7 @@ class Database:
             columns="sensor_id",
             values="value")
 
-        # pivot_df = pivot_df.ffill()
+        # Export one column per sensor so spreadsheets are easier to chart.
         pivot_df = pivot_df.rename(
             columns={sensor.value: sensor.name for sensor in SENSOR_ID})
         return pivot_df

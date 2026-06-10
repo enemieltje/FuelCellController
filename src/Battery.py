@@ -5,9 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-LOW_VOLTAGE = 3.6
-HIGH_VOLTAGE = 4.2
-# Non-linear
+# Approximate LiPo cell voltage to state-of-charge lookup table.
 LIPO_TABLE = [
     (4.20, 100),
     (4.15, 95),
@@ -34,6 +32,8 @@ LIPO_TABLE = [
 
 
 class Battery:
+    """Battery helper that reads pack power and estimates state of charge."""
+
     def __init__(self, analog_pins, channel=1):
         self.analog_pins = analog_pins
         self.channel = channel
@@ -57,6 +57,8 @@ class Battery:
 
     def get_percentage(self):
         # voltage = self.read_voltage()
+        # The INA226 reads the whole 6-cell pack, so divide by 6 to compare the
+        # value against the single-cell LiPo lookup table above.
         voltage = self.power_meter.get_voltage()/6.0
 
         # Clamp range
@@ -78,8 +80,8 @@ class Battery:
                 # logger.debug(f"Battery at {soc}% ({voltage} V)")
                 return soc
 
-        logger.debug(f"Battery disconnected")
+        logger.debug("Battery disconnected")
         return None
 
-    def get_power():
-        Battery.power_meter.get_power()
+    def get_power(self):
+        return self.power_meter.get_power()

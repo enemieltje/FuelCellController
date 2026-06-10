@@ -1,6 +1,7 @@
 from lib.ADS1115 import ADS1115
 import logging
 import threading
+
 ADS1115_REG_CONFIG_PGA_6_144V = 0x00  # 6.144V range = Gain 2/3
 ADS1115_REG_CONFIG_PGA_4_096V = 0x02  # 4.096V range = Gain 1
 ADS1115_REG_CONFIG_PGA_2_048V = 0x04  # 2.048V range = Gain 2 (default)
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Analog_Pins:
+    """Thread-safe wrapper around the ADS1115 analog-to-digital converter."""
 
     def __init__(self, addr=0x48):
         self.ads = ADS1115()
@@ -23,11 +25,16 @@ class Analog_Pins:
         self.ads.set_gain(gain)
 
     def read(self, channel):
+        """Read a channel as volts.
+
+        Several sensors share the same ADS1115, so the lock prevents two sensor
+        threads from trying to use the I2C device at the same time.
+        """
         with self.lock:
             try:
                 voltage = self.ads.read_voltage(channel)["r"] / 1000.0
                 # logger.debug(f"Channel {channel} has: {voltage} V")
                 return voltage
-            except:
-                logger.warn("Could not find Analog Pins")
+            except Exception:
+                logger.warning("Could not read ADS1115 channel %s", channel)
                 return 0

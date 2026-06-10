@@ -10,6 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 class Power_System:
+    """Coordinates the fuel-cell-side hardware.
+
+    The project uses class-level state here as a simple singleton. ``start``
+    creates each hardware adapter once, and the web server calls ``enable`` and
+    ``disable`` to switch the fuel cell relay.
+    """
 
     def start():
         Power_System.analog_pins = Analog_Pins()
@@ -23,9 +29,14 @@ class Power_System:
         # Power_System.relay = gpiozero.OutputDevice(27, active_high=False)
 
     def stop():
-        Power_System.battery.stop()
-        Power_System.fc_power.stop()
-        Power_System.pressure_sensor.stop()
+        for component_name in ("battery", "fc_power", "pressure_sensor"):
+            component = getattr(Power_System, component_name, None)
+            if component:
+                component.stop()
+
+        fuel_cell = getattr(Power_System, "fuel_cell", None)
+        if fuel_cell:
+            fuel_cell.off()
 
     def enable():
         Power_System.fuel_cell.on()

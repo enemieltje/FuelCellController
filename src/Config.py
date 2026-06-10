@@ -6,6 +6,8 @@ logger = logging.getLogger(__name__)
 
 
 class Config():
+    """Loads and saves project settings from ``config/*.ini`` files."""
+
     configFolder = "config/"
     currentConfig = ""
     version = '1'
@@ -29,7 +31,7 @@ class Config():
             if Config.__config.has_section('Metadata'):
                 version = Config.__config['Metadata']['Version']
             if not (version == Config.version):
-                logger.warn(
+                logger.warning(
                     "Config %s is outdated! Version is %s instead of required %s", name, version, Config.version)
                 Config.__loadDefault()
         else:
@@ -88,6 +90,8 @@ class Config():
     def __getint(section, name) -> int:
         logger.debug("getting value %s from config %s",
                      name, Config.currentConfig)
+        # Prefer the active config file, but fall back to the generated default
+        # when a value is missing so old config files keep working.
         default = Config.__default[section].getint(name)
         if Config.__config.has_section(section):
             return Config.__config[section].getint(name, fallback=default)

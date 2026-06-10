@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Server(socketserver.ThreadingMixIn, server.HTTPServer):
-    # A simple HTTP server allowing IO over a webpage
+    """Small HTTP server for the dashboard and hardware control API."""
 
     instance: any
     allow_reuse_address = True
@@ -42,15 +42,14 @@ class Server(socketserver.ThreadingMixIn, server.HTTPServer):
         Server.instance.run()
 
     def stop():
-        # This shuts the instance down and stops all camera streams
         logger.debug('stopping server')
-        Server.instance.shutdown()
-        Server.instance.server_close()
+        if hasattr(Server, "instance"):
+            Server.instance.shutdown()
+            Server.instance.server_close()
 
 
 class RequestHandler(server.SimpleHTTPRequestHandler):
-    # This handles the requests sent to the http server (from the fetch function in index.js for example)
-    # Requests always contain a path/url that describes what the request wants from the server
+    """Routes dashboard requests to hardware and database services."""
 
     def do_GET(self):
         # logger.debug(f"Received GET: {self.path}")
@@ -185,11 +184,7 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
 
             logger.debug(f"POST data: {data}")
 
-            # Example endpoint
             if path == "/api/set/throttle":
-
-                # Expect JSON like:
-                # { "throttle": 0.75 }
 
                 throttle = data.get("throttle")
 
@@ -296,7 +291,8 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
         self.wfile.write(response_data.encode("utf-8"))
 
     def send_power(self, sensor_id):
-        # Get the sensor data
+        # Power meters reserve three consecutive sensor ids:
+        # power, voltage, and current.
         data = {
             "power": Database.get_latest(sensor_id),
             "voltage": Database.get_latest(sensor_id + 1),
@@ -359,7 +355,7 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
         logger.debug("sending file: " + filePath)
         if not os.path.isfile(filePath):
             # If the file does not exist, send a warning and redirect to the home page
-            logger.warn('File does not exist: ' + filePath)
+            logger.warning('File does not exist: ' + filePath)
             self.redirectHome()
             return
 

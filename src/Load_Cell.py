@@ -10,8 +10,10 @@ logger = logging.getLogger(__name__)
 
 
 class Load_Cell:
+    """HX711 load-cell reader used to calculate motor thrust."""
 
     def _parse(value):
+        """Convert a raw HX711 value to weight using the saved calibration."""
         lowValue = Config.getLoadcell('lowValue')
         lowWeight = Config.getLoadcell('lowWeight')
         highValue = Config.getLoadcell('highValue')
@@ -35,7 +37,7 @@ class Load_Cell:
         if result:			# you can check if the reset was successful
             logger.info('Ready to use')
         else:
-            logger.warn('not ready')
+            logger.warning('not ready')
 
     def print():
         logger.debug('Print')
@@ -44,27 +46,28 @@ class Load_Cell:
         if data != False:  # always check if you get correct value or only False
             logger.info('Raw data: ' + str(data) + "\n")
         else:
-            logger.warn('invalid data')
+            logger.warning('invalid data')
 
     def read_raw():
         logger.debug('Read')
         data = Load_Cell.hx.get_raw_data()
         logger.debug(data)
 
-        if data != False and len(data) > 1:
+        if data is not False and len(data) > 1:
             return int(statistics.mean(data))
 
-        logger.warn('invalid data')
+        logger.warning('invalid data')
+        return 0
 
     def read_parsed():
         return round(Load_Cell._parse(Load_Cell.read_raw()), 3)
 
     def config_low():
-        lowValue = Load_Cell.readRaw()
+        lowValue = Load_Cell.read_raw()
         Config.setLoadcell('lowValue', str(lowValue))
 
     def config_high():
-        highValue = Load_Cell.readRaw()
+        highValue = Load_Cell.read_raw()
         Config.setLoadcell('highValue', str(highValue))
 
     def get_high_weight():

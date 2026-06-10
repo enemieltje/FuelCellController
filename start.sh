@@ -1,7 +1,8 @@
 # Create all the required files and folders
-mkdir logs
-mkdir config
-mv logs/latest.log logs/old.log
+mkdir -p logs config data
+if [ -f logs/latest.log ]; then
+    mv logs/latest.log logs/old.log
+fi
 touch logs/latest.log
 
 # Create a virtual environment (venv)

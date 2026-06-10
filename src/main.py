@@ -1,44 +1,64 @@
+import sys
+import signal
+import logging
+from pathlib import Path
+
+from Config import Config
 from Database import Database
 from Drone import Drone
 from Power_System import Power_System
 from Server import Server
-from Config import Config
-import sys
-import signal
-import logging
-print("Starting...")
-#!../.venv/bin/python
 
-# Configure logs to log both in the console and to a file
+LOG_DIR = Path("logs")
+LOG_FILE = LOG_DIR / "latest.log"
+
+print("Starting...")
+# !../.venv/bin/python
+
+# Keep a file log for later debugging and mirror the same messages to stdout.
+LOG_DIR.mkdir(exist_ok=True)
 logger = logging.getLogger(__name__)
-logging.basicConfig(handlers=[logging.FileHandler("logs/latest.log"),
-                              logging.StreamHandler(sys.stdout)],
-                    encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(
+    handlers=[
+        logging.FileHandler(LOG_FILE, encoding="utf-8"),
+        logging.StreamHandler(sys.stdout),
+    ],
+    level=logging.DEBUG,
+)
+
+
+SERVICES = (
+    Config,
+    Database,
+    Drone,
+    Power_System,
+    Server,
+)
 
 
 def sigterm_handler(_signo, _stack_frame):
-    # Gracefully stop the server when the program exits or crashes
-    # This makes sure to stop the cameras and unpower the steppers
+    """Stop services in reverse startup order before the process exits."""
     logger.info("stopping...")
-    Power_System.stop()
-    Drone.stop()
-    Database.stop()
-    Server.stop()
+    for service in reversed(SERVICES):
+        stop = getattr(service, "stop", None)
+        if stop is None:
+            continue
+
+        try:
+            stop()
+        except Exception:
+            logger.exception("Failed to stop %s cleanly", service.__name__)
+
     sys.exit(0)
 
 
 if __name__ == "__main__":
-    # Register our shutdown handler to be called at signal "terminate"
+    # systemd and service managers usually send SIGTERM during shutdown.
     signal.signal(signal.SIGTERM, sigterm_handler)
 
-    # Start the server and add the camera(s)
     logger.info("starting")
     try:
-        Config.start()
-        Database.start()
-        Drone.start()
-        Power_System.start()
-        Server.start()
+        for service in SERVICES:
+            service.start()
     finally:
-        # CuringMachine.stop()
         sigterm_handler(signal.SIGTERM, 0)

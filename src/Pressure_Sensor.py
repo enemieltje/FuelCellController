@@ -7,6 +7,8 @@ logger = logging.getLogger(__name__)
 
 
 class Pressure_Sensor(Sensor):
+    """Reads CGG pressure locally and Bronkhorst flow-controller values."""
+
     bh: propar.instrument
 
     def __init__(self, analog_pins, channel=0):
@@ -14,9 +16,8 @@ class Pressure_Sensor(Sensor):
         self.channel = channel
         self.bh = None
         self.connect_bronkhorst()
-        self.interval = 40
 
-        super().__init__(SENSOR_ID.CGG_PRESSURE)
+        super().__init__(SENSOR_ID.CGG_PRESSURE, interval_ms=40)
 
     def connect_bronkhorst(self):
         try:
@@ -30,8 +31,8 @@ class Pressure_Sensor(Sensor):
             # fluid_type = self.bh.readParameter(432)
             # logger.info(f'Control Mode: {fluid_type}')
             self.use_hydrogen()
-        except:
-            logger.warn("Bronkhorst not found!")
+        except Exception:
+            logger.warning("Bronkhorst not found")
 
     def get_fluid_type(self):
         if not self.bh:
@@ -62,6 +63,8 @@ class Pressure_Sensor(Sensor):
 
     def read_pressure(self):
         voltage = self.analog_pins.read(self.channel)
+        # The pressure transducer outputs 4-20 mA. The 120 ohm resistor converts
+        # that current into a voltage that the ADS1115 can measure.
         current = voltage / 120.0
         pressure = ((current - 0.004) / (0.02 - 0.004)) * 10.0
         # Clamp and convert to absolute pressure (+1 bar)

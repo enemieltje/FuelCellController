@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 class Drone:
+    """Controls the motor load and records motor-side measurements."""
+
     throttle: HardwarePWM
 
     def start():
@@ -33,12 +35,16 @@ class Drone:
 
     def stop():
         # Load_Cell.stop()
-        Drone.power_meter.stop()
-        Drone.throttle_sensor.stop()
-        Drone.set_throttle(0.0)
-        Drone.throttle.stop()
+        if hasattr(Drone, "power_meter"):
+            Drone.power_meter.stop()
+        if hasattr(Drone, "throttle_sensor"):
+            Drone.throttle_sensor.stop()
+        if hasattr(Drone, "throttle"):
+            Drone.set_throttle(0.0)
+            Drone.throttle.stop()
         time.sleep(1)
-        Drone.power.off()
+        if hasattr(Drone, "power"):
+            Drone.power.off()
 
     def arm():
         logger.info("Arming ESC")
@@ -78,10 +84,13 @@ class Drone:
 
     def set_throttle(value):
         value = max(0.0, min(1.0, value))
-        Drone.throttle_sensor.value = value
+        if hasattr(Drone, "throttle_sensor"):
+            Drone.throttle_sensor.value = value
         # value = (value * 2.0) - 1.0
         logger.info(f"Set throttle to {value}")
         # Drone.throttle.value = value
 
+        # ESCs expect a 50 Hz servo pulse. 5-10% duty cycle maps to roughly
+        # 1-2 ms pulse width, which is the usual throttle range.
         duty = 5.0 + value * 5.0
         Drone.throttle.change_duty_cycle(duty)
