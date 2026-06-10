@@ -56,7 +56,8 @@ class Battery:
         return sum(self.read_voltage() for _ in range(samples)) / samples
 
     def get_percentage(self):
-        voltage = self.read_voltage()
+        # voltage = self.read_voltage()
+        voltage = self.power_meter.get_voltage()/6.0
 
         # Clamp range
         if voltage >= 4.20:
@@ -74,7 +75,7 @@ class Battery:
                 ratio = (voltage - v2) / (v1 - v2)
                 soc = soc2 + ratio * (soc1 - soc2)
                 soc = round(soc, 1)
-                logger.debug(f"Battery at {soc}% ({voltage} V)")
+                # logger.debug(f"Battery at {soc}% ({voltage} V)")
                 return soc
 
         logger.debug(f"Battery disconnected")

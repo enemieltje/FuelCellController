@@ -12,24 +12,36 @@ class Pressure_Sensor(Sensor):
     def __init__(self, analog_pins, channel=0):
         self.analog_pins = analog_pins
         self.channel = channel
-        self.bh = propar.instrument('/dev/ttyACM0')
-        # set control function to Downstream Pressure
-        self.bh.writeParameter(432, 2)
-        # Set downstream pressure setpoint
-        self.bh.writeParameter(206, 1.4, channel=2)
-        # fluid_type = self.bh.readParameter(25)
-        # logger.info(f'Fluid Type: {fluid_type}')
-        # fluid_type = self.bh.readParameter(24)
-        # logger.info(f'Fluid Index: {fluid_type}')
-        self.use_hydrogen()
+        self.bh = None
+        self.connect_bronkhorst()
+        self.interval = 40
 
-        super().__init__(SENSOR_ID.PRESSURE)
+        super().__init__(SENSOR_ID.CGG_PRESSURE)
+
+    def connect_bronkhorst(self):
+        try:
+            self.bh = propar.instrument('/dev/ttyACM0')
+            # set control function to Downstream Pressure
+            self.bh.writeParameter(432, 2)
+            # Set downstream pressure setpoint
+            self.bh.writeParameter(206, 1.4, channel=3)
+            # fluid_type = self.bh.readParameter(206, channel=3)
+            # logger.info(f'Setpoint: {fluid_type} bar')
+            # fluid_type = self.bh.readParameter(432)
+            # logger.info(f'Control Mode: {fluid_type}')
+            self.use_hydrogen()
+        except:
+            logger.warn("Bronkhorst not found!")
 
     def get_fluid_type(self):
+        if not self.bh:
+            return 0
 
         return self.bh.readParameter(25)
 
     def set_fluid_type(self, fluid_index):
+        if not self.bh:
+            return 0
         self.bh.writeParameter(24, fluid_index)
 
         fluid_type = self.get_fluid_type()
@@ -52,7 +64,8 @@ class Pressure_Sensor(Sensor):
         voltage = self.analog_pins.read(self.channel)
         current = voltage / 120.0
         pressure = ((current - 0.004) / (0.02 - 0.004)) * 10.0
-        pressure = max(0, min(pressure, 10))
+        # Clamp and convert to absolute pressure (+1 bar)
+        pressure = max(0, min(pressure, 10)) + 1.0
         # logger.debug(f"Pressure: {pressure} bar ({voltage} V)")
         return pressure
 
@@ -60,16 +73,22 @@ class Pressure_Sensor(Sensor):
         return sum(self.read_pressure() for _ in range(samples)) / samples
 
     def read_upstream(self):
+        if not self.bh:
+            return 0
         pressure = self.bh.readParameter(205, channel=2)
         # logger.debug(f"Upstream Pressure: {pressure} bar")
         return pressure
 
     def read_downstream(self):
+        if not self.bh:
+            return 0
         pressure = self.bh.readParameter(205, channel=3)
         # logger.debug(f"Downstream Pressure: {pressure} bar")
         return pressure
 
     def read_flow(self):
+        if not self.bh:
+            return 0
         flow = self.bh.readParameter(205, channel=1)
         # logger.debug(f"Flow: {flow}")
         return flow

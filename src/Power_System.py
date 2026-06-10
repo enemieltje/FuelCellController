@@ -19,7 +19,7 @@ class Power_System:
 
         Power_System.fc_power = Power_Meter(SENSOR_ID.FUELCELL_POWER, 0x40)
 
-        Power_System.fuel_cell = gpiozero.OutputDevice(27, active_high=False)
+        Power_System.fuel_cell = gpiozero.OutputDevice(27, active_high=True)
         # Power_System.relay = gpiozero.OutputDevice(27, active_high=False)
 
     def stop():

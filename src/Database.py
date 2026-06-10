@@ -28,7 +28,7 @@ class SENSOR_ID(IntEnum):
     BATTERY_SOC = 10
     THRUST = 11
     THROTTLE = 12
-    PRESSURE = 13
+    CGG_PRESSURE = 13
     UPSTREAM_PRESSURE = 14
     DOWNSTREAM_PRESSURE = 15
     FLOW = 16
@@ -45,9 +45,12 @@ SENSOR_COLORS = {
     "LOAD_VOLTAGE": "c5b0d5",
     "LOAD_CURRENT": "8c564b",
     "BATTERY_SOC": "e377c2",
-    "PRESSURE": "7f7f7f",
+    "CGG_PRESSURE": "7f7f7f",
     "THRUST": "bcbd22",
     "THROTTLE": "17becf",
+    "UPSTREAM_PRESSURE": "9467bd",
+    "DOWNSTREAM_PRESSURE": "c5b0d5",
+    "FLOW": "8c564b",
 }
 
 
@@ -419,7 +422,7 @@ class Database:
             columns="sensor_id",
             values="value")
 
-        pivot_df = pivot_df.ffill()
+        # pivot_df = pivot_df.ffill()
         pivot_df = pivot_df.rename(
             columns={sensor.value: sensor.name for sensor in SENSOR_ID})
         return pivot_df
@@ -450,6 +453,7 @@ class Database:
 
         wb = load_workbook(buffer)
         ws = wb.active
+        column = "R"
 
         Database.add_sensor_chart(
             ws,
@@ -464,7 +468,23 @@ class Database:
             secondary_sensors=[
                 "THROTTLE"
             ],
-            chart_position="O4"
+            chart_position=column+"4"
+        )
+
+        Database.add_sensor_chart(
+            ws,
+            title="Pressures",
+            primary_axis_title="Pressure (bar)",
+            primary_sensors=[
+                "CGG_PRESSURE",
+                "UPSTREAM_PRESSURE",
+                "DOWNSTREAM_PRESSURE",
+            ],
+            secondary_axis_title="Flow (mg/s)",
+            secondary_sensors=[
+                "FLOW",
+            ],
+            chart_position=column+"34"
         )
 
         Database.add_sensor_chart(
@@ -479,7 +499,7 @@ class Database:
                 "FUELCELL_VOLTAGE",
                 "FUELCELL_CURRENT",
             ],
-            chart_position="O34"
+            chart_position=column+"64"
         )
 
         Database.add_sensor_chart(
@@ -494,7 +514,7 @@ class Database:
                 "BATTERY_VOLTAGE",
                 "BATTERY_CURRENT",
             ],
-            chart_position="O64"
+            chart_position=column+"94"
         )
 
         Database.add_sensor_chart(
@@ -509,7 +529,7 @@ class Database:
                 "LOAD_VOLTAGE",
                 "LOAD_CURRENT",
             ],
-            chart_position="O94"
+            chart_position=column+"124"
         )
 
         final_buffer = io.BytesIO()
@@ -541,10 +561,10 @@ class Database:
 
         chart = ScatterChart()
         chart.title = title
-        chart.scatterStyle = "lineMarker"
+        chart.scatterStyle = "marker"
 
         chart.x_axis.title = "Timestamp"
-        chart.x_axis.number_format = "hh:mm:ss"
+        chart.x_axis.number_format = "mm:ss.000"
         chart.x_axis.delete = False
         chart.y_axis.title = primary_axis_title
         chart.y_axis.delete = False
@@ -554,7 +574,7 @@ class Database:
 
         # Secondary axis setup
         secondary_chart = ScatterChart()
-        secondary_chart.scatterStyle = "lineMarker"
+        secondary_chart.scatterStyle = "marker"
 
         secondary_chart.y_axis.axId = 200
         secondary_chart.y_axis.title = secondary_axis_title

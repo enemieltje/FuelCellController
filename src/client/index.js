@@ -213,10 +213,10 @@ async function fetchValues() {
     updateValue('motorCurrent', sensorData.LOAD_CURRENT.toFixed(1) + ' A');
     updateValue('motorThrust', sensorData.THRUST.toFixed(1) + ' kg');
 
-    updateValue('pressureValue', sensorData.PRESSURE.toFixed(2) + ' bar');
+    updateValue('pressureValue', sensorData.CGG_PRESSURE.toFixed(2) + ' bar');
     updateValue('upstreamPressureValue', sensorData.UPSTREAM_PRESSURE.toFixed(2) + ' bar');
     updateValue('downstreamPressureValue', sensorData.DOWNSTREAM_PRESSURE.toFixed(2) + ' bar');
-    updateValue('flowValue', sensorData.FLOW.toFixed(4) + ' mg/s?');
+    updateValue('flowValue', sensorData.FLOW.toFixed(4) + ' mg/s');
 
     fetch("api/gas/get").then(async response => {
         const gasType = await response.json()
@@ -227,7 +227,7 @@ async function fetchValues() {
     // addData(fuelCellChart, now, sensorData.FUELCELL_POWER);
     // addData(batteryChart, now, sensorData.BATTERY_POWER);
     // addData(motorChart, now, sensorData.LOAD_POWER);
-    // addData(pressureChart, now, sensorData.PRESSURE);
+    // addData(pressureChart, now, sensorData.CGG_PRESSURE);
     // addData(socChart, now, sensorData.BATTERY_SOC);
     // addData(thrustChart, now, sensorData.THRUST);
     addData(flowChart, now, sensorData.FLOW);
@@ -239,7 +239,7 @@ async function fetchValues() {
     ]);
 
     addMultiData(pressureChart, now, [
-        sensorData.PRESSURE,
+        sensorData.CGG_PRESSURE,
         sensorData.UPSTREAM_PRESSURE,
         sensorData.DOWNSTREAM_PRESSURE
     ]);
@@ -504,10 +504,10 @@ document.getElementById('stopFC').addEventListener('click', () => {
     fetch('/api/button/stop')
 });
 
-document.getElementById('enableDrone').addEventListener('click', () => {
-    console.log('Enable Drone');
-    fetch('/api/button/enableDrone')
-});
+// document.getElementById('enableDrone').addEventListener('click', () => {
+//     console.log('Enable Drone');
+//     fetch('/api/button/enableDrone')
+// });
 
 document.getElementById('disableDrone').addEventListener('click', () => {
     console.log('Disable Drone');
@@ -519,10 +519,10 @@ document.getElementById('armDrone').addEventListener('click', () => {
     fetch('/api/button/armDrone')
 });
 
-document.getElementById('calibrateDrone').addEventListener('click', () => {
-    console.log('Calibrate Drone');
-    fetch('/api/button/calibrateDrone')
-});
+// document.getElementById('calibrateDrone').addEventListener('click', () => {
+//     console.log('Calibrate Drone');
+//     fetch('/api/button/calibrateDrone')
+// });
 
 document.getElementById('newRunButton').addEventListener('click', async () => {
     console.log('New Run');

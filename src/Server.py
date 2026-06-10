@@ -121,7 +121,7 @@ class RequestHandler(server.SimpleHTTPRequestHandler):
             self.send_power(SENSOR_ID.LOAD_POWER)
 
         elif path == "/api/get/pressure":
-            self.send_db_value(SENSOR_ID.PRESSURE)
+            self.send_db_value(SENSOR_ID.CGG_PRESSURE)
 
         elif path == "/api/get/battery":
             self.send_db_value(SENSOR_ID.BATTERY_SOC)
